@@ -53,6 +53,9 @@ float cameraSpeed = 0.01f;
 
 bool pressedKeys[1024];
 float angle = 0.0f;
+bool firstMouse = true;
+float lastX = 400, lastY = 300;
+float pitch = 0.0f, yaw = 90.0f;
 
 gps::Model3D tree, tree2, bison;
 gps::Shader myCustomShader;
@@ -112,7 +115,26 @@ void keyboardCallback(GLFWwindow* window, int key, int scancode, int action, int
 
 void mouseCallback(GLFWwindow* window, double xpos, double ypos)
 {
+	if (firstMouse)
+	{
+		lastX = xpos;
+		lastY = ypos;
+		firstMouse = false;
+	}
 
+	float xoffset = xpos - lastX;
+	float yoffset = lastY - ypos;
+	lastX = xpos;
+	lastY = ypos;
+
+	float sensitivity = 0.0005;
+	xoffset *= sensitivity;
+	yoffset *= sensitivity;
+
+	yaw = xoffset;
+	pitch = yoffset;
+
+	myCamera.rotate(pitch, yaw);
 }
 
 void processMovement()
@@ -307,6 +329,20 @@ void renderTrees()
 	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
 	tree.Draw(myCustomShader);
+
+
+	//4
+	model = glm::mat4(1.0f);
+
+	model = glm::translate(model, glm::vec3(-0.5, 0, 6));
+
+	model = glm::scale(model, glm::vec3(0.6f, 0.6f, 0.6f));
+
+	model = glm::rotate(model, 75.0f, glm::vec3(0, 1, 0));
+
+	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+
+	tree2.Draw(myCustomShader);
 }
 
 void renderAnimals()
@@ -351,6 +387,8 @@ void renderScene()
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+	glfwSetCursorPosCallback(glWindow, mouseCallback);
+
 	processMovement();
 
 	renderTrees();
@@ -365,6 +403,8 @@ int main(int argc, const char * argv[]) {
 	initModels();
 	initShaders();
 	initUniforms();
+
+	glfwSetInputMode(glWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
 	while (!glfwWindowShouldClose(glWindow)) {
 		renderScene();
