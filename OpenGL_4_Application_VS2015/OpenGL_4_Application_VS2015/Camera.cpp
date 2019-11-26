@@ -22,6 +22,23 @@ namespace gps {
     {
         return glm::lookAt(cameraPosition, cameraPosition + cameraDirection , glm::vec3(0.0f, 1.0f, 0.0f));
     }
+
+	glm::vec3 Camera::getCameraDirection()
+	{
+		return cameraDirection;
+	}
+
+	glm::vec3 Camera::getCameraPosition()
+	{
+		return cameraPosition;
+	}
+
+	glm::vec3 Camera::getCameraRightDirection()
+	{
+		return cameraRightDirection;
+	}
+
+	
     
     void Camera::move(MOVE_DIRECTION direction, float speed)
     {
@@ -41,6 +58,14 @@ namespace gps {
             case MOVE_LEFT:
                 cameraPosition -= cameraRightDirection * speed;
                 break;
+
+			case MOVE_UP:
+				cameraPosition += glm::cross(cameraRightDirection, cameraDirection) * speed;
+				break;
+
+			case MOVE_DOWN:
+				cameraPosition -= glm::cross(cameraRightDirection, cameraDirection) * speed;
+				break;
         }
     }
     

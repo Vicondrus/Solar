@@ -49,7 +49,7 @@ glm::vec3 lightPos2;
 GLuint lightPosLoc2;
 
 gps::Camera myCamera(glm::vec3(0.0f, 1.0f, 2.5f), glm::vec3(0.0f, 1.0f, -10.0f));
-float cameraSpeed = 0.01f;
+float cameraSpeed = 0.05f;
 
 bool pressedKeys[1024];
 float angle = 0.0f;
@@ -57,7 +57,7 @@ bool firstMouse = true;
 float lastX = 400, lastY = 300;
 float pitch = 0.0f, yaw = 90.0f;
 
-gps::Model3D tree, tree2, bison;
+gps::Model3D tree, tree2, bison, ufo, ground;
 gps::Shader myCustomShader;
 
 GLenum glCheckError_(const char *file, int line)
@@ -113,6 +113,8 @@ void keyboardCallback(GLFWwindow* window, int key, int scancode, int action, int
 	}
 }
 
+float offset = 0;
+
 void mouseCallback(GLFWwindow* window, double xpos, double ypos)
 {
 	if (firstMouse)
@@ -127,29 +129,43 @@ void mouseCallback(GLFWwindow* window, double xpos, double ypos)
 	lastX = xpos;
 	lastY = ypos;
 
-	float sensitivity = 0.0005;
+	float sensitivity = 0.001;
 	xoffset *= sensitivity;
 	yoffset *= sensitivity;
 
 	yaw = xoffset;
 	pitch = yoffset;
 
+	offset += xoffset;
+
 	myCamera.rotate(pitch, yaw);
 }
+
+float str = 0;
+float str2 = 0;
+float lightStep = 0.01;
 
 void processMovement()
 {
 
 	if (pressedKeys[GLFW_KEY_Q]) {
-		angle += 0.5f;
-		if (angle > 360.0f)
-			angle -= 360.0f;
+		if(str<1)
+			str += lightStep;
 	}
 
 	if (pressedKeys[GLFW_KEY_E]) {
-		angle -= 0.5f;
-		if (angle < 0.0f)
-			angle += 360.0f;
+		if(str>0)
+			str -= lightStep;
+	}
+
+	if (pressedKeys[GLFW_KEY_F]) {
+		if(str2<1)
+			str2 += lightStep;
+	}
+
+	if (pressedKeys[GLFW_KEY_G]) {
+		if(str2>0)
+			str2 -= lightStep;
 	}
 
 	if (pressedKeys[GLFW_KEY_W]) {
@@ -167,6 +183,25 @@ void processMovement()
 	if (pressedKeys[GLFW_KEY_D]) {
 		myCamera.move(gps::MOVE_RIGHT, cameraSpeed);
 	}
+
+	if (pressedKeys[GLFW_KEY_SPACE]) {
+		myCamera.move(gps::MOVE_UP, cameraSpeed);
+	}
+
+	if (pressedKeys[GLFW_KEY_LEFT_CONTROL]) {
+		myCamera.move(gps::MOVE_DOWN, cameraSpeed);
+	}
+}
+
+void processLightColor() {
+	//set light color
+	lightColor = glm::vec3(0.3f+str, 0.5f+str, 0.3f+str); //white light
+	lightColorLoc = glGetUniformLocation(myCustomShader.shaderProgram, "lightColor");
+	glUniform3fv(lightColorLoc, 1, glm::value_ptr(lightColor));
+
+	lightColor2 = glm::vec3(str2, str2, str2); //white light
+	lightColorLoc2 = glGetUniformLocation(myCustomShader.shaderProgram, "lightColor2");
+	glUniform3fv(lightColorLoc2, 1, glm::value_ptr(lightColor2));
 }
 
 bool initOpenGLWindow()
@@ -233,6 +268,8 @@ void initModels()
 	tree = gps::Model3D("objects/tree1/Tree.obj", "objects/tree1/");
 	tree2 = gps::Model3D("objects/tree2/Tree.obj", "objects/tree2/");
 	bison = gps::Model3D("objects/bison/Bison.obj", "objects/bison/");
+	ufo = gps::Model3D("objects/ufo/UFO2.obj", "objects/ufo/");
+	ground = gps::Model3D("objects/ground/ground.obj", "objects/ground/");
 }
 
 void initShaders()
@@ -264,21 +301,21 @@ void initUniforms()
 	lightDirLoc = glGetUniformLocation(myCustomShader.shaderProgram, "lightDir");
 	glUniform3fv(lightDirLoc, 1, glm::value_ptr(lightDir));
 
-	//set light color
-	lightColor = glm::vec3(0.0f, 0.0f, 0.0f); //white light
-	lightColorLoc = glGetUniformLocation(myCustomShader.shaderProgram, "lightColor");
-	glUniform3fv(lightColorLoc, 1, glm::value_ptr(lightColor));
+	////set light color
+	//lightColor = glm::vec3(0.3f, 0.5f, 0.3f); //white light
+	//lightColorLoc = glGetUniformLocation(myCustomShader.shaderProgram, "lightColor");
+	//glUniform3fv(lightColorLoc, 1, glm::value_ptr(lightColor));
 
 	//set light color
-	lightColor2 = glm::vec3(1.0f, 1.0f, 1.0f); //white light
+	lightColor2 = glm::vec3(0.0f, 0.0f, 0.0f); //white light
 	lightColorLoc2 = glGetUniformLocation(myCustomShader.shaderProgram, "lightColor2");
 	glUniform3fv(lightColorLoc2, 1, glm::value_ptr(lightColor2));
 
-	lightPos = glm::vec3(1.0f, 0.0f, 0.0f);
-	lightPosLoc = glGetUniformLocation(myCustomShader.shaderProgram, "lightPos");
-	glUniform3fv(lightPosLoc, 1, glm::value_ptr(lightPos));
+	//lightPos = glm::vec3(1.0f, 1.0f, 0.0f);
+	//lightPosLoc = glGetUniformLocation(myCustomShader.shaderProgram, "lightPos");
+	//glUniform3fv(lightPosLoc, 1, glm::value_ptr(lightPos));
 
-	lightPos2 = glm::vec3(0.0f, 0.0f, 5.0f);
+	lightPos2 = glm::vec3(0.0f, 1.0f, 5.0f);
 	lightPosLoc2 = glGetUniformLocation(myCustomShader.shaderProgram, "lightPos2");
 	glUniform3fv(lightPosLoc2, 1, glm::value_ptr(lightPos2));
 }
@@ -362,7 +399,7 @@ void renderAnimals()
 	//initialize the model matrix
 	model = glm::mat4(1.0f);
 	//create model matrix
-	model = glm::translate(model, glm::vec3(0,0,1));
+	model = glm::translate(model, glm::vec3(0,0.3,1));
 
 	model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(0, 1, 0));
 	//send model matrix data to shader	
@@ -374,13 +411,87 @@ void renderAnimals()
 	//initialize the model matrix
 	model = glm::mat4(1.0f);
 	//create model matrix
-	model = glm::translate(model, glm::vec3(1, 0, 1));
+	model = glm::translate(model, glm::vec3(1, 0.3, 1));
 
 	model = glm::rotate(model, glm::radians(90.0f), glm::vec3(0, 1, 0));
 	//send model matrix data to shader	
 	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
 	bison.Draw(myCustomShader);
+}
+
+float delta = 0;
+float movementSpeed = 7; // units per second
+void updateDelta(double elapsedSeconds) { 
+	delta = delta + movementSpeed * elapsedSeconds;
+	if (delta >= 360)
+		delta = delta - 360;
+}
+double lastTimeStamp = glfwGetTime();
+
+void renderUfo() {
+	//initialize the view matrix
+	view = myCamera.getViewMatrix();
+	//send view matrix data to shader	
+	glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+
+	//create normal matrix
+	normalMatrix = glm::mat3(glm::inverseTranspose(view*model));
+	//send normal matrix data to shader
+	glUniformMatrix3fv(normalMatrixLoc, 1, GL_FALSE, glm::value_ptr(normalMatrix));
+
+	//1
+	//initialize the model matrix
+	model = glm::mat4(1.0f);
+
+	//model = glm::translate(model, glm::vec3(0, 4, 0));
+
+	double currentTimeStamp = glfwGetTime();
+	updateDelta(currentTimeStamp - lastTimeStamp);
+	lastTimeStamp = currentTimeStamp;
+
+	glm::mat4 viewMatrixInverse = glm::inverse(view);
+	glm::vec3 cameraPositionWorldSpace = glm::vec3(viewMatrixInverse[3][0], viewMatrixInverse[3][1], viewMatrixInverse[3][2]);
+
+	model = glm::translate(model, cameraPositionWorldSpace);
+
+	//offset = offset + yaw;
+
+	model = glm::rotate(model, offset, glm::vec3(0,1,0));
+
+	model = glm::translate(model, glm::vec3(0, 0, -5));
+
+	model = glm::rotate(model, glm::radians(delta), glm::vec3(0, 1, 0));
+
+	model = glm::scale(model, glm::vec3(0.5, 0.5, 0.5));
+
+	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+
+	lightPos = glm::vec3(0.0f, 0.0f, 0.0f);
+	lightPos = glm::vec3(model * glm::vec4(lightPos,1.0f));
+	lightPosLoc = glGetUniformLocation(myCustomShader.shaderProgram, "lightPos");
+	glUniform3fv(lightPosLoc, 1, glm::value_ptr(lightPos));
+
+	ufo.Draw(myCustomShader);
+}
+
+void renderGround() {
+	view = myCamera.getViewMatrix();
+	//send view matrix data to shader	
+	glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+
+	//create normal matrix
+	normalMatrix = glm::mat3(glm::inverseTranspose(view*model));
+	//send normal matrix data to shader
+	glUniformMatrix3fv(normalMatrixLoc, 1, GL_FALSE, glm::value_ptr(normalMatrix));
+
+	model = glm::mat4(1.0f);
+
+	//model = glm::translate(model, glm::vec3(0,-0.2,0));
+
+	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+
+	ground.Draw(myCustomShader);
 }
 
 void renderScene()
@@ -391,9 +502,15 @@ void renderScene()
 
 	processMovement();
 
+	processLightColor();
+
+	renderGround();
+
 	renderTrees();
 
 	renderAnimals();
+
+	renderUfo();
 }
 
 int main(int argc, const char * argv[]) {

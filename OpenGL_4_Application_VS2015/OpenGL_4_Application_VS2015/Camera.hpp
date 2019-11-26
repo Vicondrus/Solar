@@ -14,13 +14,16 @@
 
 namespace gps {
     
-    enum MOVE_DIRECTION {MOVE_FORWARD, MOVE_BACKWARD, MOVE_RIGHT, MOVE_LEFT};
+    enum MOVE_DIRECTION {MOVE_FORWARD, MOVE_BACKWARD, MOVE_RIGHT, MOVE_LEFT, MOVE_UP, MOVE_DOWN};
     
     class Camera
     {
     public:
         Camera(glm::vec3 cameraPosition, glm::vec3 cameraTarget);
         glm::mat4 getViewMatrix();
+		glm::vec3 getCameraDirection();
+		glm::vec3 getCameraPosition();
+		glm::vec3 getCameraRightDirection();
         void move(MOVE_DIRECTION direction, float speed);
         void rotate(float pitch, float yaw);
         
