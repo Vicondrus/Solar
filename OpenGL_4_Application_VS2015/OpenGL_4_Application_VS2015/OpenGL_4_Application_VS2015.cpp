@@ -18,6 +18,7 @@
 #include <string>
 #include "Shader.hpp"
 #include "Camera.hpp"
+#include "SkyBox.hpp"
 #define TINYOBJLOADER_IMPLEMENTATION
 
 #include "Model3D.hpp"
@@ -49,7 +50,7 @@ glm::vec3 lightPos2;
 GLuint lightPosLoc2;
 
 gps::Camera myCamera(glm::vec3(0.0f, 1.0f, 2.5f), glm::vec3(0.0f, 1.0f, -10.0f));
-float cameraSpeed = 0.05f;
+float cameraSpeed = 0.08f;
 
 bool pressedKeys[1024];
 float angle = 0.0f;
@@ -58,7 +59,8 @@ float lastX = 400, lastY = 300;
 float pitch = 0.0f, yaw = 90.0f;
 
 gps::Model3D tree, tree2, bison, ufo, ground;
-gps::Shader myCustomShader;
+gps::Shader myCustomShader, skyboxShader;
+gps::SkyBox mySkyBox;
 
 GLenum glCheckError_(const char *file, int line)
 {
@@ -149,22 +151,22 @@ void processMovement()
 {
 
 	if (pressedKeys[GLFW_KEY_Q]) {
-		if(str<1)
+		if (str < 1)
 			str += lightStep;
 	}
 
 	if (pressedKeys[GLFW_KEY_E]) {
-		if(str>0)
+		if (str > 0)
 			str -= lightStep;
 	}
 
 	if (pressedKeys[GLFW_KEY_F]) {
-		if(str2<1)
+		if (str2 < 1)
 			str2 += lightStep;
 	}
 
 	if (pressedKeys[GLFW_KEY_G]) {
-		if(str2>0)
+		if (str2 > 0)
 			str2 -= lightStep;
 	}
 
@@ -195,7 +197,7 @@ void processMovement()
 
 void processLightColor() {
 	//set light color
-	lightColor = glm::vec3(0.3f+str, 0.5f+str, 0.3f+str); //white light
+	lightColor = glm::vec3(0.3f + str, 0.5f + str, 0.3f + str); //white light
 	lightColorLoc = glGetUniformLocation(myCustomShader.shaderProgram, "lightColor");
 	glUniform3fv(lightColorLoc, 1, glm::value_ptr(lightColor));
 
@@ -263,23 +265,65 @@ void initOpenGLState()
 	glFrontFace(GL_CCW); // GL_CCW for counter clock-wise
 }
 
+std::vector<float> treePosx;
+std::vector<float> treePosz;
+std::vector<float> treeType;
+std::vector<float> treeSize;
+std::vector<float> treeRot;
+
+void genTrees() {
+
+	for (int i = 0; i < 10; i++) {
+		for (int j = 0; j < 10; j++) {
+			int x = rand() % 100 + 50;
+			float size = x / 100.0;
+			int type = rand() % 2;
+			int posx = rand() % 5;
+			int posz = rand() % 5;
+			int rot = rand() % 628;
+			float rotation = rot / 100;
+
+			posx = -30 + i * 6 + posx;
+			posz = -30 + j * 6 + posz;
+
+			treePosx.push_back(posx);
+			treePosz.push_back(posz);
+			treeType.push_back(type);
+			treeSize.push_back(size);
+			treeRot.push_back(rotation);
+		}
+	}
+}
+
+std::vector<const GLchar*> faces;
+
 void initModels()
 {
+	faces.push_back("textures/skybox/skyrender0001.tga");
+	faces.push_back("textures/skybox/skyrender0004.tga");
+	faces.push_back("textures/skybox/skyrender0003.tga");
+	faces.push_back("textures/skybox/skyrender0006.tga");
+	faces.push_back("textures/skybox/skyrender0005.tga");
+	faces.push_back("textures/skybox/skyrender0002.tga");
 	tree = gps::Model3D("objects/tree1/Tree.obj", "objects/tree1/");
 	tree2 = gps::Model3D("objects/tree2/Tree.obj", "objects/tree2/");
 	bison = gps::Model3D("objects/bison/Bison.obj", "objects/bison/");
 	ufo = gps::Model3D("objects/ufo/UFO2.obj", "objects/ufo/");
 	ground = gps::Model3D("objects/ground/ground.obj", "objects/ground/");
+	genTrees();
 }
 
 void initShaders()
 {
+	skyboxShader.loadShader("shaders/skyboxShader.vert", "shaders/skyboxShader.frag");
 	myCustomShader.loadShader("shaders/shaderStart.vert", "shaders/shaderStart.frag");
-	myCustomShader.useShaderProgram();
+	//myCustomShader.useShaderProgram();
 }
 
 void initUniforms()
 {
+	myCustomShader.useShaderProgram();
+
 	model = glm::mat4(1.0f);
 	modelLoc = glGetUniformLocation(myCustomShader.shaderProgram, "model");
 	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
@@ -318,9 +362,21 @@ void initUniforms()
 	lightPos2 = glm::vec3(0.0f, 1.0f, 5.0f);
 	lightPosLoc2 = glGetUniformLocation(myCustomShader.shaderProgram, "lightPos2");
 	glUniform3fv(lightPosLoc2, 1, glm::value_ptr(lightPos2));
+
+	mySkyBox.Load(faces);
+
+	skyboxShader.useShaderProgram();
+
+	view = myCamera.getViewMatrix();
+	glUniformMatrix4fv(glGetUniformLocation(skyboxShader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+	view = myCamera.getViewMatrix();
+	glUniformMatrix4fv(glGetUniformLocation(skyboxShader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+	projection = glm::perspective(glm::radians(45.0f), (float)retina_width / (float)retina_height, 0.1f, 1000.0f);
+	glUniformMatrix4fv(glGetUniformLocation(skyboxShader.shaderProgram, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+
 }
 
-void renderTrees() 
+void renderTrees()
 {
 
 	//initialize the view matrix
@@ -333,53 +389,20 @@ void renderTrees()
 	//send normal matrix data to shader
 	glUniformMatrix3fv(normalMatrixLoc, 1, GL_FALSE, glm::value_ptr(normalMatrix));
 
-	//1
-	//initialize the model matrix
-	model = glm::mat4(1.0f);
-	//create model matrix
-	model = glm::rotate(model, glm::radians(30.0f), glm::vec3(0, 1, 0));
-	//send model matrix data to shader	
-	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+	for (int i = 0; i < treePosx.size(); i++) {
+		model = glm::mat4(1.0f);
 
-	tree.Draw(myCustomShader);
+		model = glm::translate(model, glm::vec3(treePosx[i], 0, treePosz[i]));
+		model = glm::rotate(model, glm::radians(treeRot[i]), glm::vec3(0, 1, 0));
+		model = glm::scale(model, glm::vec3(treeSize[i]));
 
+		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
-	//2
-	model = glm::mat4(1.0f);
-
-	model = glm::translate(model, glm::vec3(3, 0, 3));
-
-	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-
-	tree2.Draw(myCustomShader);
-
-
-	//3
-	model = glm::mat4(1.0f);
-
-	model = glm::translate(model, glm::vec3(-2, 0, 3));
-
-	model = glm::scale(model, glm::vec3(0.75f, 0.75f, 0.75f));
-
-	model = glm::rotate(model, 180.0f, glm::vec3(0,1,0));
-
-	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-
-	tree.Draw(myCustomShader);
-
-
-	//4
-	model = glm::mat4(1.0f);
-
-	model = glm::translate(model, glm::vec3(-0.5, 0, 6));
-
-	model = glm::scale(model, glm::vec3(0.6f, 0.6f, 0.6f));
-
-	model = glm::rotate(model, 75.0f, glm::vec3(0, 1, 0));
-
-	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-
-	tree2.Draw(myCustomShader);
+		if (treeType[i] == 0)
+			tree.Draw(myCustomShader);
+		else
+			tree2.Draw(myCustomShader);
+	}
 }
 
 void renderAnimals()
@@ -399,7 +422,7 @@ void renderAnimals()
 	//initialize the model matrix
 	model = glm::mat4(1.0f);
 	//create model matrix
-	model = glm::translate(model, glm::vec3(0,0.3,1));
+	model = glm::translate(model, glm::vec3(0, 0.3, 1));
 
 	model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(0, 1, 0));
 	//send model matrix data to shader	
@@ -422,7 +445,7 @@ void renderAnimals()
 
 float delta = 0;
 float movementSpeed = 7; // units per second
-void updateDelta(double elapsedSeconds) { 
+void updateDelta(double elapsedSeconds) {
 	delta = delta + movementSpeed * elapsedSeconds;
 	if (delta >= 360)
 		delta = delta - 360;
@@ -457,7 +480,7 @@ void renderUfo() {
 
 	//offset = offset + yaw;
 
-	model = glm::rotate(model, offset, glm::vec3(0,1,0));
+	model = glm::rotate(model, offset, glm::vec3(0, 1, 0));
 
 	model = glm::translate(model, glm::vec3(0, 0, -5));
 
@@ -468,7 +491,7 @@ void renderUfo() {
 	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
 	lightPos = glm::vec3(0.0f, 0.0f, 0.0f);
-	lightPos = glm::vec3(model * glm::vec4(lightPos,1.0f));
+	lightPos = glm::vec3(model * glm::vec4(lightPos, 1.0f));
 	lightPosLoc = glGetUniformLocation(myCustomShader.shaderProgram, "lightPos");
 	glUniform3fv(lightPosLoc, 1, glm::value_ptr(lightPos));
 
@@ -485,9 +508,80 @@ void renderGround() {
 	//send normal matrix data to shader
 	glUniformMatrix3fv(normalMatrixLoc, 1, GL_FALSE, glm::value_ptr(normalMatrix));
 
+	//1
 	model = glm::mat4(1.0f);
 
-	//model = glm::translate(model, glm::vec3(0,-0.2,0));
+	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+
+	ground.Draw(myCustomShader);
+
+	//2
+	model = glm::mat4(1.0f);
+
+	model = glm::translate(model, glm::vec3(20.0f, 0.0f, 0.0f));
+
+	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+
+	ground.Draw(myCustomShader);
+
+	//3
+	model = glm::mat4(1.0f);
+
+	model = glm::translate(model, glm::vec3(-20.0f, 0.0f, 0.0f));
+
+	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+
+	ground.Draw(myCustomShader);
+
+	//4
+	model = glm::mat4(1.0f);
+
+	model = glm::translate(model, glm::vec3(20.0f, 0.0f, 20.0f));
+
+	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+
+	ground.Draw(myCustomShader);
+
+	//5
+	model = glm::mat4(1.0f);
+
+	model = glm::translate(model, glm::vec3(-20.0f, 0.0f, -20.0f));
+
+	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+
+	ground.Draw(myCustomShader);
+
+	//6
+	model = glm::mat4(1.0f);
+
+	model = glm::translate(model, glm::vec3(0.0f, 0.0f, 20.0f));
+
+	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+
+	ground.Draw(myCustomShader);
+
+	//7
+	model = glm::mat4(1.0f);
+
+	model = glm::translate(model, glm::vec3(0.0f, 0.0f, -20.0f));
+
+	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+
+	ground.Draw(myCustomShader);
+
+	//8
+	model = glm::mat4(1.0f);
+
+	model = glm::translate(model, glm::vec3(-20.0f, 0.0f, 20.0f));
+
+	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+
+	ground.Draw(myCustomShader);
+
+	//9
+	model = glm::mat4(1.0f);
+
+	model = glm::translate(model, glm::vec3(20.0f, 0.0f, -20.0f));
 
 	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
@@ -496,6 +590,8 @@ void renderGround() {
 
 void renderScene()
 {
+	myCustomShader.useShaderProgram();
+
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glfwSetCursorPosCallback(glWindow, mouseCallback);
@@ -511,6 +607,8 @@ void renderScene()
 	renderAnimals();
 
 	renderUfo();
+
+	mySkyBox.Draw(skyboxShader, view, projection);
 }
 
 int main(int argc, const char * argv[]) {
@@ -520,6 +618,7 @@ int main(int argc, const char * argv[]) {
 	initModels();
 	initShaders();
 	initUniforms();
+	//genTrees();
 
 	glfwSetInputMode(glWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 

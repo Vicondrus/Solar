@@ -163,6 +163,7 @@
     <ClCompile Include="Model3D.cpp" />
     <ClCompile Include="OpenGL_4_Application_VS2015.cpp" />
     <ClCompile Include="Shader.cpp" />
+    <ClCompile Include="SkyBox.cpp" />
     <ClCompile Include="stb_image.c" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
