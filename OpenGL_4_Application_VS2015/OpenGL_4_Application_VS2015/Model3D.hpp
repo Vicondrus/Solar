@@ -32,6 +32,10 @@ namespace gps {
 
 		void Draw(gps::Shader shaderProgram);
 
+		glm::vec3 getMins();
+
+		glm::vec3 getMaxs();
+
     private:
 		// Component meshes - group of objects
         std::vector<gps::Mesh> meshes;
@@ -46,6 +50,9 @@ namespace gps {
 
 		// Reads the pixel data from an image file and loads it into the video memory
 		GLuint ReadTextureFromFile(const char* file_name);
+
+		glm::vec3 mins;
+		glm::vec3 maxs;
     };
 }
 

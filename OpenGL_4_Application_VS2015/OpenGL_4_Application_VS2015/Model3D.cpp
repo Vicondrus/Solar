@@ -13,16 +13,21 @@ namespace gps {
 
 	Model3D::Model3D()
 	{
-
+		mins = glm::vec3(10000);
+		maxs = glm::vec3(-10000);
 	}
 
 	Model3D::Model3D(std::string fileName)
 	{
+		mins = glm::vec3(10000);
+		maxs = glm::vec3(-10000);
 		ReadOBJ(fileName, NULL);
 	}
 
 	Model3D::Model3D(std::string fileName, std::string basePath)
 	{
+		mins = glm::vec3(10000);
+		maxs = glm::vec3(-10000);
 		ReadOBJ(fileName, basePath);
 	}
 
@@ -31,6 +36,16 @@ namespace gps {
 	{
 		for (int i = 0; i < meshes.size(); i++)
 			meshes[i].Draw(shaderProgram);
+	}
+
+	glm::vec3 Model3D::getMins()
+	{
+		return mins;
+	}
+
+	glm::vec3 Model3D::getMaxs()
+	{
+		return maxs;
 	}
 
 	// Does the parsing of the .obj file and fills in the data structure
@@ -90,6 +105,19 @@ namespace gps {
 					glm::vec3 vertexPosition(vx, vy, vz);
 					glm::vec3 vertexNormal(nx, ny, nz);
 					glm::vec2 vertexTexCoords(tx, ty);
+
+					if (mins.x > vx)
+						mins.x = vx;
+					else if (maxs.x < vx)
+						maxs.x = vx;
+					if (mins.y > vy)
+						mins.y = vy;
+					else if (maxs.y < vy)
+						maxs.y = vy;
+					if (mins.z > vz)
+						mins.z = vz;
+					else if (maxs.z < vz)
+						maxs.z = vz;
 
 					gps::Vertex currentVertex;
 					currentVertex.Position = vertexPosition;

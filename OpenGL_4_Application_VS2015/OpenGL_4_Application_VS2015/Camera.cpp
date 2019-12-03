@@ -71,10 +71,12 @@ namespace gps {
     
     void Camera::rotate(float pitch, float yaw)
     {
-		if (pitch > 89.0f)
-			pitch = 89.0f;
-		if (pitch < -89.0f)
-			pitch = -89.0f;
+		float dot = glm::dot(cameraDirection, glm::vec3(0, 1, 0));
+		float angle = glm::degrees(glm::acos(dot));
+		if (angle > 120 && pitch > 0)
+			pitch = 0;
+		if (angle < 60 && pitch < 0)
+			pitch = 0;
 		cameraDirection = glm::rotate(glm::mat4(1.0f), yaw, glm::cross(cameraRightDirection, cameraDirection))*glm::vec4(cameraDirection, 0.0f);
 		cameraDirection = glm::rotate(glm::mat4(1.0f), -pitch, cameraRightDirection)*glm::vec4(cameraDirection, 0.0f);
 		cameraRightDirection = glm::normalize(glm::cross(cameraDirection, glm::vec3(0.0f, 1.0f, 0.0f)));

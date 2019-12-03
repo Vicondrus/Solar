@@ -6,13 +6,13 @@ layout(location=2) in vec2 vTexCoords;
 
 out vec3 normal;
 out vec4 fragPosEye;
-out vec4 fragPosLightSpace;
 out vec2 fragTexCoords;
+out vec4 fragPosLightSpace;
 
+uniform mat4 lightSpaceTrMatrix;
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
-uniform mat4 lightSpaceTrMatrix;
 
 void main() 
 {
