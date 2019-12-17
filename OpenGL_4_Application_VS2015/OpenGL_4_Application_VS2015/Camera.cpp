@@ -82,5 +82,15 @@ namespace gps {
 		cameraRightDirection = glm::normalize(glm::cross(cameraDirection, glm::vec3(0.0f, 1.0f, 0.0f)));
 		cameraTarget = cameraPosition + cameraDirection;
     }
+
+	glm::vec3 Camera::interpolate(glm::vec3 cameraPosStart, glm::vec3 cameraPosStop, glm::vec3 cameraTargetStart, glm::vec3 cameraTargetStop, double elapsedTime, double totalTime)
+	{
+		float t = elapsedTime / totalTime;
+		cameraPosition = (1 - t) * cameraPosStart + t * cameraPosStop;
+		cameraTarget = (1 - t) * cameraTargetStart + t * cameraTargetStop;
+		cameraDirection = glm::normalize(cameraTarget - cameraPosition);
+		cameraRightDirection = glm::normalize(glm::cross(cameraDirection, glm::vec3(0, 1, 0)));
+		return cameraPosition;
+	}
     
 }

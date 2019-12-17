@@ -72,6 +72,15 @@ gps::Model3D tree, tree2, bison, ufo, ground, lightCube;
 gps::Shader myCustomShader, skyboxShader, shadowShader, lightShader;
 gps::SkyBox mySkyBox;
 
+glm::mat4 cubeModel, ufoModel;
+
+bool animationOn = false;
+
+int count = 0;
+
+double animationStartTime, animationActualTime, animationTotalTime;
+
+
 GLenum glCheckError_(const char *file, int line)
 {
 	GLenum errorCode;
@@ -111,6 +120,8 @@ void windowResizeCallback(GLFWwindow* window, int width, int height)
 	glViewport(0, 0, retina_width, retina_height);
 }
 
+int step;
+
 void keyboardCallback(GLFWwindow* window, int key, int scancode, int action, int mode)
 {
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
@@ -129,6 +140,8 @@ float offset = 0;
 
 void mouseCallback(GLFWwindow* window, double xpos, double ypos)
 {
+	if (animationOn)
+		return;
 	if (firstMouse)
 	{
 		lastX = xpos;
@@ -166,6 +179,111 @@ float updateDelta(double elapsedSeconds, float speed, float delta) {
 	return d;
 }
 
+bool checkIfPointInsideBox(glm::vec3 point, glm::vec3 mins, glm::vec3 maxs)
+{
+	glm::vec3 a = glm::vec3(mins.x, mins.y, maxs.z);
+	glm::vec3 b = glm::vec3(maxs.x, mins.y, maxs.z);
+	glm::vec3 c = glm::vec3(maxs.x, maxs.y, maxs.z);
+	glm::vec3 d = glm::vec3(mins.x, maxs.y, maxs.z);
+	glm::vec3 e = glm::vec3(mins.x, mins.y, mins.z);
+	glm::vec3 f = glm::vec3(maxs.x, mins.y, mins.z);
+	glm::vec3 g = glm::vec3(maxs.x, maxs.y, mins.z);
+	glm::vec3 h = glm::vec3(mins.x, maxs.y, mins.z);
+	/*std::vector<glm::vec3> normals;
+	normals.push_back(glm::cross(a - b, c - b));
+	normals.push_back(glm::cross(c - b, f - b));
+	normals.push_back(glm::cross(a - b, c - b));
+	normals.push_back(glm::cross(a - b, c - b));
+	normals.push_back(glm::cross(a - b, c - b));
+	normals.push_back(glm::cross(a - b, c - b));*/
+	glm::vec3 u = a - e;
+	glm::vec3 v = a - b;
+	glm::vec3 w = a - d;
+	bool ok1 = glm::dot(u, a) < glm::dot(u, point);
+	ok1 = ok1 && glm::dot(u, point) < glm::dot(u, e);
+	bool ok2 = glm::dot(v, a) < glm::dot(v, point);
+	ok2 = ok2 && glm::dot(v, point) < glm::dot(v, b);
+	bool ok3 = glm::dot(w, a) < glm::dot(w, point);
+	ok3 = glm::dot(w, point) < glm::dot(w, d);
+	bool ok4 = false;
+	if (ok1 && ok2 && ok3)
+		ok4 = true;
+	bool ok5 = glm::dot(u, a) > glm::dot(u, point);
+	ok5 = ok5 && glm::dot(u, point) > glm::dot(u, e);
+	bool ok6 = glm::dot(v, a) > glm::dot(v, point);
+	ok6 = ok6 && glm::dot(v, point) > glm::dot(v, b);
+	bool ok7 = glm::dot(w, a) > glm::dot(w, point);
+	ok7 = glm::dot(w, point) > glm::dot(w, d);
+	bool ok8 = false;
+	if (ok5 && ok6 && ok7)
+		ok8 = true;
+	if (ok4 || ok8)
+		return true;
+	return false;
+
+}
+
+bool checkCollisions(glm::vec3 mins1, glm::vec3 maxs1, glm::vec3 mins2, glm::vec3 maxs2, glm::mat4 model1, glm::mat4 model2)
+{
+	mins1 = glm::vec3(model1 * glm::vec4(mins1, 1.0));
+	maxs1 = glm::vec3(model1 * glm::vec4(maxs1, 1.0));
+	mins2 = glm::vec3(model2 * glm::vec4(mins2, 1.0));
+	maxs2 = glm::vec3(model2 * glm::vec4(maxs2, 1.0));
+	glm::vec3 mins = mins1;
+	glm::vec3 maxs = maxs1;
+	glm::vec3 a1 = glm::vec3(mins.x, mins.y, maxs.z);
+	if (checkIfPointInsideBox(a1, mins2, maxs2))
+		return true;
+	glm::vec3 b1 = glm::vec3(maxs.x, mins.y, maxs.z);
+	if (checkIfPointInsideBox(b1, mins2, maxs2))
+		return true;
+	glm::vec3 c1 = glm::vec3(maxs.x, maxs.y, maxs.z);
+	if (checkIfPointInsideBox(c1, mins2, maxs2))
+		return true;
+	glm::vec3 d1 = glm::vec3(mins.x, maxs.y, maxs.z);
+	if (checkIfPointInsideBox(d1, mins2, maxs2))
+		return true;
+	glm::vec3 e1 = glm::vec3(mins.x, mins.y, mins.z);
+	if (checkIfPointInsideBox(e1, mins2, maxs2))
+		return true;
+	glm::vec3 f1 = glm::vec3(maxs.x, mins.y, mins.z);
+	if (checkIfPointInsideBox(f1, mins2, maxs2))
+		return true;
+	glm::vec3 g1 = glm::vec3(maxs.x, maxs.y, mins.z);
+	if (checkIfPointInsideBox(g1, mins2, maxs2))
+		return true;
+	glm::vec3 h1 = glm::vec3(mins.x, maxs.y, mins.z);
+	if (checkIfPointInsideBox(h1, mins2, maxs2))
+		return true;
+	mins = mins2;
+	maxs = maxs2;
+	glm::vec3 a2 = glm::vec3(mins.x, mins.y, maxs.z);
+	if (checkIfPointInsideBox(a2, mins1, maxs1))
+		return true;
+	glm::vec3 b2 = glm::vec3(maxs.x, mins.y, maxs.z);
+	if (checkIfPointInsideBox(b2, mins1, maxs1))
+		return true;
+	glm::vec3 c2 = glm::vec3(maxs.x, maxs.y, maxs.z);
+	if (checkIfPointInsideBox(c2, mins1, maxs1))
+		return true;
+	glm::vec3 d2 = glm::vec3(mins.x, maxs.y, maxs.z);
+	if (checkIfPointInsideBox(d2, mins1, maxs1))
+		return true;
+	glm::vec3 e2 = glm::vec3(mins.x, mins.y, mins.z);
+	if (checkIfPointInsideBox(e2, mins1, maxs1))
+		return true;
+	glm::vec3 f2 = glm::vec3(maxs.x, mins.y, mins.z);
+	if (checkIfPointInsideBox(f2, mins1, maxs1))
+		return true;
+	glm::vec3 g2 = glm::vec3(maxs.x, maxs.y, mins.z);
+	if (checkIfPointInsideBox(g2, mins1, maxs1))
+		return true;
+	glm::vec3 h2 = glm::vec3(mins.x, maxs.y, mins.z);
+	if (checkIfPointInsideBox(h2, mins1, maxs1))
+		return true;
+	return false;
+}
+
 float deltaC = 0;
 
 void updateDeltaCamera(double elapsedSeconds) {
@@ -180,50 +298,61 @@ void processMovement()
 {
 	if (pressedKeys[GLFW_KEY_P]) {
 		std::cout << myCamera.getCameraPosition().x << " " << myCamera.getCameraPosition().y << " " << myCamera.getCameraPosition().z << "\n";
+		std::cout << checkIfPointInsideBox(glm::vec3(0, 0, 0), glm::vec3(-1, -1, -1), glm::vec3(1, 1, 1)) << "\n";
 	}
 
-	if (pressedKeys[GLFW_KEY_Q]) {
-		if (str < 1)
-			str += lightStep;
-	}
+	/*if (pressedKeys[GLFW_KEY_M]) {
+		animationOn = true;
+		animationTotalTime = 10;
+		animationStartTime = glfwGetTime();
+		step = 0;
+	}*/
 
-	if (pressedKeys[GLFW_KEY_E]) {
-		if (str > 0)
-			str -= lightStep;
-	}
+	if (!animationOn) {
 
-	if (pressedKeys[GLFW_KEY_F]) {
-		if (str2 < 1)
-			str2 += lightStep;
-	}
+		if (pressedKeys[GLFW_KEY_Q]) {
+			if (str < 1)
+				str += lightStep;
+		}
 
-	if (pressedKeys[GLFW_KEY_G]) {
-		if (str2 > 0)
-			str2 -= lightStep;
-	}
+		if (pressedKeys[GLFW_KEY_E]) {
+			if (str > 0)
+				str -= lightStep;
+		}
 
-	if (pressedKeys[GLFW_KEY_W]) {
-		myCamera.move(gps::MOVE_FORWARD, deltaC);
-	}
+		if (pressedKeys[GLFW_KEY_F]) {
+			if (str2 < 1)
+				str2 += lightStep;
+		}
 
-	if (pressedKeys[GLFW_KEY_S]) {
-		myCamera.move(gps::MOVE_BACKWARD, deltaC);
-	}
+		if (pressedKeys[GLFW_KEY_G]) {
+			if (str2 > 0)
+				str2 -= lightStep;
+		}
 
-	if (pressedKeys[GLFW_KEY_A]) {
-		myCamera.move(gps::MOVE_LEFT, deltaC);
-	}
+		if (pressedKeys[GLFW_KEY_W]) {
+			myCamera.move(gps::MOVE_FORWARD, deltaC);
+		}
 
-	if (pressedKeys[GLFW_KEY_D]) {
-		myCamera.move(gps::MOVE_RIGHT, deltaC);
-	}
+		if (pressedKeys[GLFW_KEY_S]) {
+			myCamera.move(gps::MOVE_BACKWARD, deltaC);
+		}
 
-	if (pressedKeys[GLFW_KEY_SPACE]) {
-		myCamera.move(gps::MOVE_UP, deltaC);
-	}
+		if (pressedKeys[GLFW_KEY_A]) {
+			myCamera.move(gps::MOVE_LEFT, deltaC);
+		}
 
-	if (pressedKeys[GLFW_KEY_LEFT_CONTROL]) {
-		myCamera.move(gps::MOVE_DOWN, deltaC);
+		if (pressedKeys[GLFW_KEY_D]) {
+			myCamera.move(gps::MOVE_RIGHT, deltaC);
+		}
+
+		if (pressedKeys[GLFW_KEY_SPACE]) {
+			myCamera.move(gps::MOVE_UP, deltaC);
+		}
+
+		if (pressedKeys[GLFW_KEY_LEFT_CONTROL]) {
+			myCamera.move(gps::MOVE_DOWN, deltaC);
+		}
 	}
 }
 
@@ -303,7 +432,7 @@ std::vector<float> treeType;
 std::vector<float> treeSize;
 std::vector<float> treeRot;
 
-const int trees = 10;
+const int trees = 8;
 
 void genTrees() {
 
@@ -362,11 +491,6 @@ void initShaders()
 	shadowShader.loadShader("shaders/shaderShadow.vert", "shaders/shaderShadow.frag");
 	lightShader.loadShader("shaders/lightCube.vert", "shaders/lightCube.frag");
 	myCustomShader.useShaderProgram();
-}
-
-bool checkCollisions(glm::vec3 mins1, glm::vec3 maxs1, glm::vec3 mins2, glm::vec3 maxs2, glm::mat4, glm::mat4) 
-{
-
 }
 
 void initFBOs()
@@ -435,11 +559,11 @@ void initUniforms()
 	lightPosLoc2 = glGetUniformLocation(myCustomShader.shaderProgram, "lightPos2");
 	glUniform3fv(lightPosLoc2, 1, glm::value_ptr(lightPos2));
 
-	lightPos3 = glm::vec3(2.0f, 2.0f, 2.0f);
+	lightPos3 = glm::vec3(10.0f, 10.0f, 10.0f);
 	lightPosLoc3 = glGetUniformLocation(myCustomShader.shaderProgram, "lightPos3");
-	glUniform3fv(lightPosLoc2, 1, glm::value_ptr(lightPos3));
+	glUniform3fv(lightPosLoc3, 1, glm::value_ptr(lightPos3));
 
-	lightColor3 = glm::vec3(1.0f, 0.3f, 0.3f); //white light
+	lightColor3 = glm::vec3(0.7f, 0.3f, 0.3f); //white light
 	lightColorLoc3 = glGetUniformLocation(myCustomShader.shaderProgram, "lightColor3");
 	glUniform3fv(lightColorLoc3, 1, glm::value_ptr(lightColor3));
 
@@ -468,7 +592,7 @@ void renderTrees(gps::Shader shader)
 	//create normal matrix
 	normalMatrix = glm::mat3(glm::inverseTranspose(view*model));
 	//send normal matrix data to shader
-	glUniformMatrix3fv(normalMatrixLoc, 1, GL_FALSE, glm::value_ptr(normalMatrix));
+	glUniformMatrix3fv(glGetUniformLocation(shader.shaderProgram, "normalMatrix"), 1, GL_FALSE, glm::value_ptr(normalMatrix));
 
 	for (int i = 0; i < treePosx.size(); i++) {
 		model = glm::mat4(1.0f);
@@ -477,7 +601,7 @@ void renderTrees(gps::Shader shader)
 		model = glm::rotate(model, glm::radians(treeRot[i]), glm::vec3(0, 1, 0));
 		model = glm::scale(model, glm::vec3(treeSize[i]));
 
-		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+		glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "model") , 1, GL_FALSE, glm::value_ptr(model));
 
 		if (treeType[i] == 0)
 			tree.Draw(shader);
@@ -497,7 +621,7 @@ void renderAnimals(gps::Shader shader)
 	//create normal matrix
 	normalMatrix = glm::mat3(glm::inverseTranspose(view*model));
 	//send normal matrix data to shader
-	glUniformMatrix3fv(normalMatrixLoc, 1, GL_FALSE, glm::value_ptr(normalMatrix));
+	glUniformMatrix3fv(glGetUniformLocation(shader.shaderProgram, "normalMatrix") , 1, GL_FALSE, glm::value_ptr(normalMatrix));
 
 	//1
 	//initialize the model matrix
@@ -507,7 +631,7 @@ void renderAnimals(gps::Shader shader)
 
 	model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(0, 1, 0));
 	//send model matrix data to shader	
-	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+	glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(model));
 
 	bison.Draw(shader);
 
@@ -519,7 +643,7 @@ void renderAnimals(gps::Shader shader)
 
 	model = glm::rotate(model, glm::radians(90.0f), glm::vec3(0, 1, 0));
 	//send model matrix data to shader	
-	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+	glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(model));
 
 	bison.Draw(shader);
 }
@@ -531,11 +655,24 @@ void renderLightCubes(gps::Shader shader) {
 	glUniformMatrix4fv(glGetUniformLocation(lightShader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
 
 	model = glm::mat4(1.0f);
-	model = glm::translate(model, glm::vec3(-1, -1, -1));
-	model = glm::rotate(model, deltaCube, glm::vec3(1, 1, 1));
-	model = glm::translate(model, glm::vec3(1, 1, 1));
-	model = glm::translate(model, glm::vec3(2,2,2));
+	//model = glm::translate(model, glm::vec3(-1, -1, -1));
+	//model = glm::translate(model, glm::vec3(1, 1, 1));
+	model = glm::translate(model, glm::vec3(10,10,10));
+	//model = glm::rotate(model, deltaCube, glm::vec3(1, 1, 0));
 	model = glm::scale(model, glm::vec3(0.07f, 0.07f, 0.07f));
+
+	cubeModel = model;
+
+	//cubeModel = glm::scale(cubeModel, glm::vec3(0.6, 0.6, 0.6));
+
+	if (checkCollisions(ufo.getMins(), ufo.getMaxs(), lightCube.getMins(), lightCube.getMaxs(), ufoModel, cubeModel)) {
+		std::cout << "Collision between ufo and cube" << count << "\n";
+		count++;
+		animationOn = true;
+		animationTotalTime = 10;
+		animationStartTime = glfwGetTime();
+		step = 0;
+	}
 
 	glUniformMatrix4fv(glGetUniformLocation(lightShader.shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(model));
 
@@ -551,7 +688,7 @@ void renderUfo(gps::Shader shader) {
 	//create normal matrix
 	normalMatrix = glm::mat3(glm::inverseTranspose(view*model));
 	//send normal matrix data to shader
-	glUniformMatrix3fv(normalMatrixLoc, 1, GL_FALSE, glm::value_ptr(normalMatrix));
+	glUniformMatrix3fv(glGetUniformLocation(shader.shaderProgram, "normalMatrix"), 1, GL_FALSE, glm::value_ptr(normalMatrix));
 
 	//1
 	//initialize the model matrix
@@ -570,15 +707,17 @@ void renderUfo(gps::Shader shader) {
 	//q = model * q;
 	//float angle = glm::degrees(glm::acos(glm::dot(glm::vec3(q), myCamera.getCameraDirection())));
 
-	model = glm::rotate(model, offset, glm::vec3(0, 1, 0));
+	//model = glm::rotate(model, offset, glm::vec3(0, 1, 0));
 
-	model = glm::translate(model, glm::vec3(0, 0, -5));
+	model = glm::translate(model, 5.0f*myCamera.getCameraDirection());
 
 	model = glm::rotate(model, glm::radians(delta), glm::vec3(0, 1, 0));
 
 	model = glm::scale(model, glm::vec3(0.5, 0.5, 0.5));
 
-	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+	ufoModel = model;
+
+	glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(model));
 
 	lightPos = glm::vec3(0.0f, 0.0f, 0.0f);
 	lightPos = glm::vec3(model * glm::vec4(lightPos, 1.0f));
@@ -596,7 +735,7 @@ void renderGround(gps::Shader shader) {
 	//create normal matrix
 	normalMatrix = glm::mat3(glm::inverseTranspose(view*model));
 	//send normal matrix data to shader
-	glUniformMatrix3fv(normalMatrixLoc, 1, GL_FALSE, glm::value_ptr(normalMatrix));
+	glUniformMatrix3fv(glGetUniformLocation(shader.shaderProgram, "normalMatrix"), 1, GL_FALSE, glm::value_ptr(normalMatrix));
 
 	for (int i = 0; i < 3; i++) {
 		for (int j = 0; j < 3; j++) {
@@ -605,7 +744,7 @@ void renderGround(gps::Shader shader) {
 
 			model = glm::translate(model, glm::vec3((-20 + 20*i),0,(-20 + 20*j)));
 
-			glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+			glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(model));
 
 			ground.Draw(shader);
 		}
@@ -691,6 +830,22 @@ void renderWhole() {
 	renderLightCubes(lightShader);
 
 	mySkyBox.Draw(skyboxShader, view, projection);
+
+	if (animationOn) {
+		if(step==0)
+			myCamera.interpolate(myCamera.getCameraPosition(), glm::vec3(20, 5, -20), myCamera.getCameraDirection() * 5.0f, glm::vec3(0, 5, 0), animationActualTime - animationStartTime, animationTotalTime);
+		if (step == 1)
+			myCamera.interpolate(glm::vec3(20, 5, -20), glm::vec3(40, 10, 20), glm::vec3(0, 5, 0), glm::vec3(0, 10, 0), animationActualTime - animationStartTime, animationTotalTime);
+		if(step == 2)
+			myCamera.interpolate(glm::vec3(40, 10, 20), glm::vec3(30, 7, -10), glm::vec3(0, 10, 0), glm::vec3(0, 7, 0), animationActualTime - animationStartTime, animationTotalTime);
+		if (animationActualTime - animationStartTime >= animationTotalTime) {
+			step++;
+			animationStartTime = glfwGetTime();
+			if(step >= 3)
+				animationOn = false;
+		}
+		animationActualTime = glfwGetTime();
+	}
 }
 
 int main(int argc, const char * argv[]) {
@@ -706,12 +861,13 @@ int main(int argc, const char * argv[]) {
 
 	//TODO
 	//fog for skybox //DONE
-	//collision with ground and floating cubes
+	//collision with ground and floating cubes	//MAYBE DONE
 	//when reach a floating cube, do presentation animation
 
 	glfwSetInputMode(glWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
 	mySkyBox.Load(faces);
+
 
 	while (!glfwWindowShouldClose(glWindow)) {
 		renderWhole();

@@ -26,6 +26,8 @@ namespace gps {
 		glm::vec3 getCameraRightDirection();
         void move(MOVE_DIRECTION direction, float speed);
         void rotate(float pitch, float yaw);
+		glm::vec3 interpolate(glm::vec3 cameraPosStart, glm::vec3 cameraPosStop, glm::vec3 cameraTargetStart, glm::vec3 cameraTargetStop, double elapsedTime, double totalTime);
+
         
     private:
         glm::vec3 cameraPosition;
