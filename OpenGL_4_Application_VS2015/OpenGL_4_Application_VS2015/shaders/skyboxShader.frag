@@ -7,5 +7,6 @@ uniform samplerCube skybox;
 
 void main()
 {
-    color = 0.5*texture(skybox, textureCoordinates);
+	vec4 fogColor = vec4(0.5f, 0.5f, 0.5f, 1.0f);
+    color = 0.3*texture(skybox, textureCoordinates) + 0.3*fogColor;
 }

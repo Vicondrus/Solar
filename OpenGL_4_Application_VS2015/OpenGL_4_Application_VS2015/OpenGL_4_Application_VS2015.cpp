@@ -50,12 +50,16 @@ glm::vec3 lightPos;
 GLuint lightPosLoc;
 glm::vec3 lightPos2;
 GLuint lightPosLoc2;
+glm::vec3 lightColor3;
+GLuint lightColorLoc3;
+glm::vec3 lightPos3;
+GLuint lightPosLoc3;
 
 GLuint shadowMapFBO;
 GLuint depthMapTexture;
 
-gps::Camera myCamera(glm::vec3(0.0f, 1.0f, 2.5f), glm::vec3(0.0f, 1.0f, -10.0f));
-float cameraSpeed = 0.15f;
+gps::Camera myCamera(glm::vec3(0.0f, 1.0f, 2.5f), glm::vec3(0.0f, 1.0f, 0.0f));
+float cameraSpeed = 0.03f;
 const GLfloat near_plane = 1.0f, far_plane = 30.0f;
 
 bool pressedKeys[1024];
@@ -64,10 +68,9 @@ bool firstMouse = true;
 float lastX = 400, lastY = 300;
 float pitch = 0.0f, yaw = 90.0f;
 
-gps::Model3D tree, tree2, bison, ufo, ground;
-gps::Shader myCustomShader, skyboxShader, shadowShader;
+gps::Model3D tree, tree2, bison, ufo, ground, lightCube;
+gps::Shader myCustomShader, skyboxShader, shadowShader, lightShader;
 gps::SkyBox mySkyBox;
-
 
 GLenum glCheckError_(const char *file, int line)
 {
@@ -154,8 +157,30 @@ float str = 0;
 float str2 = 1;
 float lightStep = 0.1;
 
+float delta = 0;
+float movementSpeed = 10; // units per second
+float updateDelta(double elapsedSeconds, float speed, float delta) {
+	float d = delta + movementSpeed * elapsedSeconds;
+	if (d >= 360)
+		d = d - 360;
+	return d;
+}
+
+float deltaC = 0;
+
+void updateDeltaCamera(double elapsedSeconds) {
+	deltaC = deltaC + cameraSpeed * elapsedSeconds;
+}
+
+float deltaCube = 0;
+
+double lastTimeStamp = glfwGetTime();
+
 void processMovement()
 {
+	if (pressedKeys[GLFW_KEY_P]) {
+		std::cout << myCamera.getCameraPosition().x << " " << myCamera.getCameraPosition().y << " " << myCamera.getCameraPosition().z << "\n";
+	}
 
 	if (pressedKeys[GLFW_KEY_Q]) {
 		if (str < 1)
@@ -178,27 +203,27 @@ void processMovement()
 	}
 
 	if (pressedKeys[GLFW_KEY_W]) {
-		myCamera.move(gps::MOVE_FORWARD, cameraSpeed);
+		myCamera.move(gps::MOVE_FORWARD, deltaC);
 	}
 
 	if (pressedKeys[GLFW_KEY_S]) {
-		myCamera.move(gps::MOVE_BACKWARD, cameraSpeed);
+		myCamera.move(gps::MOVE_BACKWARD, deltaC);
 	}
 
 	if (pressedKeys[GLFW_KEY_A]) {
-		myCamera.move(gps::MOVE_LEFT, cameraSpeed);
+		myCamera.move(gps::MOVE_LEFT, deltaC);
 	}
 
 	if (pressedKeys[GLFW_KEY_D]) {
-		myCamera.move(gps::MOVE_RIGHT, cameraSpeed);
+		myCamera.move(gps::MOVE_RIGHT, deltaC);
 	}
 
 	if (pressedKeys[GLFW_KEY_SPACE]) {
-		myCamera.move(gps::MOVE_UP, cameraSpeed);
+		myCamera.move(gps::MOVE_UP, deltaC);
 	}
 
 	if (pressedKeys[GLFW_KEY_LEFT_CONTROL]) {
-		myCamera.move(gps::MOVE_DOWN, cameraSpeed);
+		myCamera.move(gps::MOVE_DOWN, deltaC);
 	}
 }
 
@@ -278,10 +303,12 @@ std::vector<float> treeType;
 std::vector<float> treeSize;
 std::vector<float> treeRot;
 
+const int trees = 10;
+
 void genTrees() {
 
-	for (int i = 0; i < 10; i++) {
-		for (int j = 0; j < 10; j++) {
+	for (int i = 0; i < trees; i++) {
+		for (int j = 0; j < trees; j++) {
 			int x = rand() % 100 + 50;
 			float size = x / 100.0;
 			int type = rand() % 2;
@@ -290,8 +317,8 @@ void genTrees() {
 			int rot = rand() % 628;
 			float rotation = rot / 100;
 
-			posx = -30 + i * 6 + posx;
-			posz = -30 + j * 6 + posz;
+			posx = -30 + i * (60 / trees) + posx;
+			posz = -30 + j * (60 / trees) + posz;
 
 			treePosx.push_back(posx);
 			treePosz.push_back(posz);
@@ -320,7 +347,12 @@ void initModels()
 	bison = gps::Model3D("objects/bison/Bison.obj", "objects/bison/");
 	ufo = gps::Model3D("objects/ufo/UFO2.obj", "objects/ufo/");
 	ground = gps::Model3D("objects/ground/ground.obj", "objects/ground/");
+	lightCube = gps::Model3D("objects/cube/cube.obj", "objects/cube/");
 	genTrees();
+	ufoMaxs = ufo.getMaxs();
+	ufoMins = ufo.getMins();
+	groundMaxs = ground.getMaxs();
+	groundMins = ground.getMins();
 }
 
 void initShaders()
@@ -328,7 +360,13 @@ void initShaders()
 	skyboxShader.loadShader("shaders/skyboxShader.vert", "shaders/skyboxShader.frag");
 	myCustomShader.loadShader("shaders/shaderStart.vert", "shaders/shaderStart.frag");
 	shadowShader.loadShader("shaders/shaderShadow.vert", "shaders/shaderShadow.frag");
+	lightShader.loadShader("shaders/lightCube.vert", "shaders/lightCube.frag");
 	myCustomShader.useShaderProgram();
+}
+
+bool checkCollisions(glm::vec3 mins1, glm::vec3 maxs1, glm::vec3 mins2, glm::vec3 maxs2, glm::mat4, glm::mat4) 
+{
+
 }
 
 void initFBOs()
@@ -396,6 +434,17 @@ void initUniforms()
 	lightPos2 = glm::vec3(0.0f, 1.0f, 5.0f);
 	lightPosLoc2 = glGetUniformLocation(myCustomShader.shaderProgram, "lightPos2");
 	glUniform3fv(lightPosLoc2, 1, glm::value_ptr(lightPos2));
+
+	lightPos3 = glm::vec3(2.0f, 2.0f, 2.0f);
+	lightPosLoc3 = glGetUniformLocation(myCustomShader.shaderProgram, "lightPos3");
+	glUniform3fv(lightPosLoc2, 1, glm::value_ptr(lightPos3));
+
+	lightColor3 = glm::vec3(1.0f, 0.3f, 0.3f); //white light
+	lightColorLoc3 = glGetUniformLocation(myCustomShader.shaderProgram, "lightColor3");
+	glUniform3fv(lightColorLoc3, 1, glm::value_ptr(lightColor3));
+
+	lightShader.useShaderProgram();
+	glUniformMatrix4fv(glGetUniformLocation(lightShader.shaderProgram, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 
 	skyboxShader.useShaderProgram();
 
@@ -475,14 +524,23 @@ void renderAnimals(gps::Shader shader)
 	bison.Draw(shader);
 }
 
-float delta = 0;
-float movementSpeed = 7; // units per second
-void updateDelta(double elapsedSeconds) {
-	delta = delta + movementSpeed * elapsedSeconds;
-	if (delta >= 360)
-		delta = delta - 360;
+void renderLightCubes(gps::Shader shader) {
+
+	shader.useShaderProgram();
+
+	glUniformMatrix4fv(glGetUniformLocation(lightShader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+
+	model = glm::mat4(1.0f);
+	model = glm::translate(model, glm::vec3(-1, -1, -1));
+	model = glm::rotate(model, deltaCube, glm::vec3(1, 1, 1));
+	model = glm::translate(model, glm::vec3(1, 1, 1));
+	model = glm::translate(model, glm::vec3(2,2,2));
+	model = glm::scale(model, glm::vec3(0.07f, 0.07f, 0.07f));
+
+	glUniformMatrix4fv(glGetUniformLocation(lightShader.shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(model));
+
+	lightCube.Draw(shader);
 }
-double lastTimeStamp = glfwGetTime();
 
 void renderUfo(gps::Shader shader) {
 	//initialize the view matrix
@@ -500,10 +558,6 @@ void renderUfo(gps::Shader shader) {
 	model = glm::mat4(1.0f);
 
 	//model = glm::translate(model, glm::vec3(0, 4, 0));
-
-	double currentTimeStamp = glfwGetTime();
-	updateDelta(currentTimeStamp - lastTimeStamp);
-	lastTimeStamp = currentTimeStamp;
 
 	glm::mat4 viewMatrixInverse = glm::inverse(view);
 	glm::vec3 cameraPositionWorldSpace = glm::vec3(viewMatrixInverse[3][0], viewMatrixInverse[3][1], viewMatrixInverse[3][2]);
@@ -544,84 +598,18 @@ void renderGround(gps::Shader shader) {
 	//send normal matrix data to shader
 	glUniformMatrix3fv(normalMatrixLoc, 1, GL_FALSE, glm::value_ptr(normalMatrix));
 
-	//1
-	model = glm::mat4(1.0f);
+	for (int i = 0; i < 3; i++) {
+		for (int j = 0; j < 3; j++) {
+			//1
+			model = glm::mat4(1.0f);
 
-	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+			model = glm::translate(model, glm::vec3((-20 + 20*i),0,(-20 + 20*j)));
 
-	ground.Draw(shader);
+			glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
-	//2
-	model = glm::mat4(1.0f);
-
-	model = glm::translate(model, glm::vec3(20.0f, 0.0f, 0.0f));
-
-	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-
-	ground.Draw(shader);
-
-	//3
-	model = glm::mat4(1.0f);
-
-	model = glm::translate(model, glm::vec3(-20.0f, 0.0f, 0.0f));
-
-	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-
-	ground.Draw(shader);
-
-	//4
-	model = glm::mat4(1.0f);
-
-	model = glm::translate(model, glm::vec3(20.0f, 0.0f, 20.0f));
-
-	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-
-	ground.Draw(shader);
-
-	//5
-	model = glm::mat4(1.0f);
-
-	model = glm::translate(model, glm::vec3(-20.0f, 0.0f, -20.0f));
-
-	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-
-	ground.Draw(shader);
-
-	//6
-	model = glm::mat4(1.0f);
-
-	model = glm::translate(model, glm::vec3(0.0f, 0.0f, 20.0f));
-
-	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-
-	ground.Draw(shader);
-
-	//7
-	model = glm::mat4(1.0f);
-
-	model = glm::translate(model, glm::vec3(0.0f, 0.0f, -20.0f));
-
-	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-
-	ground.Draw(shader);
-
-	//8
-	model = glm::mat4(1.0f);
-
-	model = glm::translate(model, glm::vec3(-20.0f, 0.0f, 20.0f));
-
-	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-
-	ground.Draw(shader);
-
-	//9
-	model = glm::mat4(1.0f);
-
-	model = glm::translate(model, glm::vec3(20.0f, 0.0f, -20.0f));
-
-	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-
-	ground.Draw(shader);
+			ground.Draw(shader);
+		}
+	}
 }
 
 void renderScene(gps::Shader shader)
@@ -640,6 +628,11 @@ void renderScene(gps::Shader shader)
 
 	renderUfo(shader);
 
+	double currentTimeStamp = glfwGetTime();
+	delta = updateDelta(currentTimeStamp - lastTimeStamp, movementSpeed, delta);
+	deltaCube = updateDelta(currentTimeStamp - lastTimeStamp, 20, deltaCube);
+	updateDeltaCamera(currentTimeStamp - lastTimeStamp);
+	lastTimeStamp = currentTimeStamp;
 }
 
 glm::mat4 computeLightSpaceTrMatrix()
@@ -659,6 +652,7 @@ void renderSceneDepthMap() {
 	glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
 	glBindFramebuffer(GL_FRAMEBUFFER, shadowMapFBO);
 	glClear(GL_DEPTH_BUFFER_BIT);
+	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	renderScene(shadowShader);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
@@ -694,6 +688,8 @@ void renderWhole() {
 	renderSceneDepthMap();
 	renderSceneMain();
 
+	renderLightCubes(lightShader);
+
 	mySkyBox.Draw(skyboxShader, view, projection);
 }
 
@@ -707,6 +703,11 @@ int main(int argc, const char * argv[]) {
 	initUniforms();
 	//genTrees();
 	glCheckError();
+
+	//TODO
+	//fog for skybox //DONE
+	//collision with ground and floating cubes
+	//when reach a floating cube, do presentation animation
 
 	glfwSetInputMode(glWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 

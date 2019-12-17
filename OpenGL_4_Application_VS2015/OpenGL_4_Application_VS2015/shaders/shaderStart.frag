@@ -26,8 +26,9 @@ uniform mat4 view;
 uniform vec3 lightPos;
 
 uniform vec3 lightPos2;
-
 uniform vec3 lightColor2;
+uniform vec3 lightPos3;
+uniform vec3 lightColor3;
 
 uniform sampler2D diffuseTexture;
 uniform sampler2D specularTexture;
@@ -35,6 +36,13 @@ uniform sampler2D shadowMap;
 
 in vec2 fragTexCoords;
 in vec4 fragPosLightSpace;
+
+float computeFog(){
+	float fogDensity = 0.03f;
+	float fragmentDistance = length(fragPosEye);
+	float fogFactor = exp(-pow(fragmentDistance * fogDensity, 2));
+	return clamp(fogFactor, 0.0f, 1.0f);
+}
 
 float computeShadow()
 {
@@ -103,7 +111,10 @@ vec3 computeLightComponentsDir(vec3 lightDir, vec3 lightColor)
 	float shadow = computeShadow();
 	
 	vec3 color = min((ambient + (1.0f -shadow)*diffuse) + (1.0f -shadow)*specular, 1.0f);
+	//float auxx = 1.0f - shadow;
+	//vec3 color = vec3(auxx*diffuse.x,auxx*diffuse.y,auxx*diffuse.z);
 	
+	//return vec3(auxx);
 	return color;
 }
 
@@ -153,9 +164,19 @@ vec3 computeLightComponentsPoint(vec3 lightPos, vec3 lightColor)
 void main() 
 {
 	//computeLightComponents();
+	vec4 colorFromTexture = texture(diffuseTexture, fragTexCoords);
+	if(colorFromTexture.a < 0.1) 
+		discard;
+	
+	float fogFactor = computeFog();
+	vec4 fogColor = vec4(0.5f, 0.5f, 0.5f, 1.0f);
 	
 	vec3 color1 = computeLightComponentsPoint(lightPos,lightColor);
 	vec3 color2 = computeLightComponentsDir(lightDir,lightColor2);
+	vec3 color3 = computeLightComponentsPoint(lightPos3, lightColor3);
     
-    fColor = vec4(color2, 1.0f);
+	vec3 color = color2 * 0.5 + color1 + color3 * 1.3;
+	
+    fColor = fogColor*(1-fogFactor) + vec4(color * fogFactor, 1.0f);
+	//fColor = vec4(texture(shadowMap,fragTexCoords).r);
 }

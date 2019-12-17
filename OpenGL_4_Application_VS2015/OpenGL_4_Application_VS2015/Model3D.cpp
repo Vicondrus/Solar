@@ -237,7 +237,8 @@ namespace gps {
 		glTexImage2D(
 			GL_TEXTURE_2D,
 			0,
-			GL_SRGB, //GL_SRGB,//GL_RGBA,
+			//GL_SRGB, //GL_SRGB,
+			GL_RGBA,
 			x,
 			y,
 			0,
