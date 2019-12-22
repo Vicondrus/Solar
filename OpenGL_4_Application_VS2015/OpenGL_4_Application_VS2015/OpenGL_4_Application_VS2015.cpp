@@ -59,7 +59,7 @@ GLuint shadowMapFBO;
 GLuint depthMapTexture;
 
 gps::Camera myCamera(glm::vec3(0.0f, 1.0f, 2.5f), glm::vec3(0.0f, 1.0f, 0.0f));
-float cameraSpeed = 0.03f;
+float cameraSpeed = 0.02f;
 const GLfloat near_plane = 1.0f, far_plane = 30.0f;
 
 bool pressedKeys[1024];
@@ -199,28 +199,30 @@ bool checkIfPointInsideBox(glm::vec3 point, glm::vec3 mins, glm::vec3 maxs)
 	glm::vec3 u = a - e;
 	glm::vec3 v = a - b;
 	glm::vec3 w = a - d;
-	bool ok1 = glm::dot(u, a) < glm::dot(u, point);
-	ok1 = ok1 && glm::dot(u, point) < glm::dot(u, e);
-	bool ok2 = glm::dot(v, a) < glm::dot(v, point);
-	ok2 = ok2 && glm::dot(v, point) < glm::dot(v, b);
-	bool ok3 = glm::dot(w, a) < glm::dot(w, point);
-	ok3 = glm::dot(w, point) < glm::dot(w, d);
-	bool ok4 = false;
-	if (ok1 && ok2 && ok3)
-		ok4 = true;
-	bool ok5 = glm::dot(u, a) > glm::dot(u, point);
-	ok5 = ok5 && glm::dot(u, point) > glm::dot(u, e);
-	bool ok6 = glm::dot(v, a) > glm::dot(v, point);
-	ok6 = ok6 && glm::dot(v, point) > glm::dot(v, b);
-	bool ok7 = glm::dot(w, a) > glm::dot(w, point);
-	ok7 = glm::dot(w, point) > glm::dot(w, d);
-	bool ok8 = false;
+	//bool ok1 = glm::dot(u, a) < glm::dot(u, point);
+	//ok1 = ok1 && glm::dot(u, point) < glm::dot(u, e);
+	//bool ok2 = glm::dot(v, a) < glm::dot(v, point);
+	//ok2 = ok2 && glm::dot(v, point) < glm::dot(v, b);
+	//bool ok3 = glm::dot(w, a) < glm::dot(w, point);
+	//ok3 = glm::dot(w, point) < glm::dot(w, d);
+	//bool ok4 = false;
+	//if (ok1 && ok2 && ok3)
+	//	ok4 = true;
+	//bool ok5 = glm::dot(u, a) > glm::dot(u, point);
+	//ok5 = ok5 && glm::dot(u, point) > glm::dot(u, e);
+	//bool ok6 = glm::dot(v, a) > glm::dot(v, point);
+	//ok6 = ok6 && glm::dot(v, point) > glm::dot(v, b);
+	//bool ok7 = glm::dot(w, a) > glm::dot(w, point);
+	//ok7 = glm::dot(w, point) > glm::dot(w, d);
+	//bool ok8 = false;
+	bool ok5 = (glm::dot(u, e) < glm::dot(u, point)) && (glm::dot(u, point) < glm::dot(u, a));
+	bool ok6 = (glm::dot(v, b) < glm::dot(v, point)) && (glm::dot(v, point) < glm::dot(v, a));
+	bool ok7 = (glm::dot(w, d) < glm::dot(w, point)) && (glm::dot(w, point) < glm::dot(w, a));
 	if (ok5 && ok6 && ok7)
-		ok8 = true;
-	if (ok4 || ok8)
+		//ok8 = true;
+	//if (ok4 || ok8)
 		return true;
 	return false;
-
 }
 
 bool checkCollisions(glm::vec3 mins1, glm::vec3 maxs1, glm::vec3 mins2, glm::vec3 maxs2, glm::mat4 model1, glm::mat4 model2)
@@ -665,15 +667,6 @@ void renderLightCubes(gps::Shader shader) {
 
 	//cubeModel = glm::scale(cubeModel, glm::vec3(0.6, 0.6, 0.6));
 
-	if (checkCollisions(ufo.getMins(), ufo.getMaxs(), lightCube.getMins(), lightCube.getMaxs(), ufoModel, cubeModel)) {
-		std::cout << "Collision between ufo and cube" << count << "\n";
-		count++;
-		animationOn = true;
-		animationTotalTime = 10;
-		animationStartTime = glfwGetTime();
-		step = 0;
-	}
-
 	glUniformMatrix4fv(glGetUniformLocation(lightShader.shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(model));
 
 	lightCube.Draw(shader);
@@ -831,18 +824,32 @@ void renderWhole() {
 
 	mySkyBox.Draw(skyboxShader, view, projection);
 
+	if (checkCollisions(ufo.getMins(), ufo.getMaxs(), lightCube.getMins(), lightCube.getMaxs(), ufoModel, cubeModel)) {
+		std::cout << "Collision between ufo and cube" << count << "\n";
+		count++;
+		animationOn = true;
+		animationTotalTime = 10;
+		animationStartTime = glfwGetTime();
+		step = 0;
+	}
+
 	if (animationOn) {
-		if(step==0)
+		/*if(step==0)
 			myCamera.interpolate(myCamera.getCameraPosition(), glm::vec3(20, 5, -20), myCamera.getCameraDirection() * 5.0f, glm::vec3(0, 5, 0), animationActualTime - animationStartTime, animationTotalTime);
 		if (step == 1)
 			myCamera.interpolate(glm::vec3(20, 5, -20), glm::vec3(40, 10, 20), glm::vec3(0, 5, 0), glm::vec3(0, 10, 0), animationActualTime - animationStartTime, animationTotalTime);
 		if(step == 2)
 			myCamera.interpolate(glm::vec3(40, 10, 20), glm::vec3(30, 7, -10), glm::vec3(0, 10, 0), glm::vec3(0, 7, 0), animationActualTime - animationStartTime, animationTotalTime);
+		*/
+		std::vector<glm::vec3> controlPoints;
+		controlPoints.push_back(glm::vec3(20,5,-20));
+		controlPoints.push_back(glm::vec3(5, 10, -5));
+		controlPoints.push_back(glm::vec3(-15, 10, -20));
+		controlPoints.push_back(glm::vec3(-20, 5, 10));
+		myCamera.interpolateBezier(controlPoints, animationActualTime - animationStartTime, animationTotalTime);
 		if (animationActualTime - animationStartTime >= animationTotalTime) {
-			step++;
-			animationStartTime = glfwGetTime();
-			if(step >= 3)
-				animationOn = false;
+			//if(step >= 3)
+			animationOn = false;
 		}
 		animationActualTime = glfwGetTime();
 	}
@@ -860,14 +867,22 @@ int main(int argc, const char * argv[]) {
 	glCheckError();
 
 	//TODO
-	//fog for skybox //DONE
-	//collision with ground and floating cubes	//MAYBE DONE
-	//when reach a floating cube, do presentation animation
+	//collision with ground and floating cubes	//HAS TO BE DEBUGGED
+	//when reach a floating cube, do presentation animation //DONE
+	//add more points to presentation and try besier curves
+	//day night cycle
+	//dynamically generate more trees and grounds or make infinite space with regard to camera position
+	//broader perspective for directional light source
 
 	glfwSetInputMode(glWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
 	mySkyBox.Load(faces);
 
+	//glm::vec3 mins1 = glm::vec3(-1,-1,-1);
+	//glm::vec3 maxs1 = glm::vec3(1, 1, 1);
+	//glm::vec3 mins2 = glm::vec3(-0.5, 1.5, -0.5);
+	//glm::vec3 maxs2 = glm::vec3(0.5, 2, 0.5);
+	//bool check = checkCollisions(mins1, maxs1, mins2, maxs2, glm::mat4(1), glm::mat4(1));
 
 	while (!glfwWindowShouldClose(glWindow)) {
 		renderWhole();

@@ -93,4 +93,51 @@ namespace gps {
 		return cameraPosition;
 	}
     
+	std::vector<glm::vec3> deCasteljau(std::vector<glm::vec3> points, int degree, float t) {
+		float *pointsQ = new float[(degree + 1) * 3];
+		float *pointsR = new float[(degree + 1) * 3];
+		int Qwidth = 3;
+		for (int j = 0; j <= degree; j++) {
+			pointsQ[j*Qwidth + 0] = points[j].x;
+			pointsQ[j*Qwidth + 1] = points[j].y;
+			pointsQ[j*Qwidth + 2] = points[j].z;
+			pointsR[j*Qwidth + 0] = points[j].x;
+			pointsR[j*Qwidth + 1] = points[j].y;
+			pointsR[j*Qwidth + 2] = points[j].z;
+		}
+		for (int k = 1; k <= degree; k++) {
+			for (int j = 0; j <= degree - k; j++) {
+				pointsQ[j*Qwidth + 0] = (1 - t) * pointsQ[j*Qwidth + 0] + t * pointsQ[(j + 1)*Qwidth + 0];
+				pointsQ[j*Qwidth + 1] = (1 - t) * pointsQ[j*Qwidth + 1] + t * pointsQ[(j + 1)*Qwidth + 1];
+				pointsQ[j*Qwidth + 2] = (1 - t) * pointsQ[j*Qwidth + 2] + t * pointsQ[(j + 1)*Qwidth + 2];
+				pointsR[j*Qwidth + 0] = (1 - (t + 0.1)) * pointsR[j*Qwidth + 0] + (t + 0.1) * pointsR[(j + 1)*Qwidth + 0];
+				pointsR[j*Qwidth + 1] = (1 - (t + 0.1)) * pointsR[j*Qwidth + 1] + (t + 0.1) * pointsR[(j + 1)*Qwidth + 1];
+				pointsR[j*Qwidth + 2] = (1 - (t + 0.1)) * pointsR[j*Qwidth + 2] + (t + 0.1) * pointsR[(j + 1)*Qwidth + 2];
+			}
+		}
+		std::vector<glm::vec3> result;
+		glm::vec3 resultPos;
+		glm::vec3 resultTarg;
+		resultPos.x = pointsQ[0];
+		resultPos.y = pointsQ[1];
+		resultPos.z = pointsQ[2];
+		resultTarg.x = pointsR[0];
+		resultTarg.y = pointsR[1];
+		resultTarg.z = pointsR[2];
+		delete[] pointsQ;
+		delete[] pointsR;
+		result.push_back(resultPos);
+		result.push_back(resultTarg);
+		return result;
+	}
+
+	glm::vec3 Camera::interpolateBezier(std::vector<glm::vec3> points, double elapsedTime, double totalTime) {
+		float t = elapsedTime / totalTime;
+		std::vector<glm::vec3> result = deCasteljau(points, points.size() - 1, t);
+		cameraPosition = result[0];
+		cameraTarget = result[1];
+		cameraDirection = glm::normalize(cameraTarget - cameraPosition);
+		cameraRightDirection = glm::normalize(glm::cross(cameraDirection, glm::vec3(0, 1, 0)));
+		return cameraPosition;
+	}
 }

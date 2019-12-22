@@ -175,7 +175,9 @@ void main()
 	vec3 color2 = computeLightComponentsDir(lightDir,lightColor2);
 	vec3 color3 = computeLightComponentsPoint(lightPos3, lightColor3);
     
-	vec3 color = color2 * 0.5 + color1 + color3 * 1.3;
+	vec3 color = color2 * 1 + color1 * 0.2 + color3 * 0.3;
+	
+	color = color / (color + vec3(1.0f));
 	
     fColor = fogColor*(1-fogFactor) + vec4(color * fogFactor, 1.0f);
 	//fColor = vec4(texture(shadowMap,fragTexCoords).r);
