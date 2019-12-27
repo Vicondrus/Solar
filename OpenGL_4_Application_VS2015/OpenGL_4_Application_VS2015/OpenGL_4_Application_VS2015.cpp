@@ -59,8 +59,8 @@ GLuint shadowMapFBO;
 GLuint depthMapTexture;
 
 gps::Camera myCamera(glm::vec3(0.0f, 1.0f, 2.5f), glm::vec3(0.0f, 1.0f, 0.0f));
-float cameraSpeed = 0.02f;
-const GLfloat near_plane = 1.0f, far_plane = 30.0f;
+float cameraSpeed = 0.03f;
+const GLfloat near_plane = 1.0f, far_plane = 80.0f;
 
 bool pressedKeys[1024];
 float angle = 0.0f;
@@ -171,9 +171,11 @@ float str2 = 1;
 float lightStep = 0.1;
 
 float delta = 0;
-float movementSpeed = 10; // units per second
+float deltaLight = 0;
+float movementSpeed = 15; // units per second
+float lightSpeed = 0.01;
 float updateDelta(double elapsedSeconds, float speed, float delta) {
-	float d = delta + movementSpeed * elapsedSeconds;
+	float d = delta + speed * elapsedSeconds;
 	if (d >= 360)
 		d = d - 360;
 	return d;
@@ -296,6 +298,45 @@ float deltaCube = 0;
 
 double lastTimeStamp = glfwGetTime();
 
+std::vector<float> treePosx;
+std::vector<float> treePosz;
+std::vector<float> treeType;
+std::vector<float> treeSize;
+std::vector<float> treeRot;
+
+int trees = 8;
+
+void genTrees() {
+
+	treePosx.clear();
+	treePosz.clear();
+	treeType.clear();
+	treeSize.clear();
+	treeRot.clear();
+
+	for (int i = 0; i < trees; i++) {
+		for (int j = 0; j < trees; j++) {
+			int x = rand() % 100 + 50;
+			float size = x / 100.0;
+			int type = rand() % 2;
+			int posx = rand() % 5;
+			int posz = rand() % 5;
+			int rot = rand() % 628;
+			float rotation = rot / 100;
+
+			posx = -30 + i * (60 / trees) + posx;
+			posz = -30 + j * (60 / trees) + posz;
+
+			treePosx.push_back(posx);
+			treePosz.push_back(posz);
+			treeType.push_back(type);
+			treeSize.push_back(size);
+			treeRot.push_back(rotation);
+		}
+	}
+}
+
+
 void processMovement()
 {
 	if (pressedKeys[GLFW_KEY_P]) {
@@ -323,13 +364,15 @@ void processMovement()
 		}
 
 		if (pressedKeys[GLFW_KEY_F]) {
-			if (str2 < 1)
-				str2 += lightStep;
+			if (trees < 10)
+				trees += 1;
+			genTrees();
 		}
 
 		if (pressedKeys[GLFW_KEY_G]) {
-			if (str2 > 0)
-				str2 -= lightStep;
+			if (trees > 2)
+				trees -= 1;
+			genTrees();
 		}
 
 		if (pressedKeys[GLFW_KEY_W]) {
@@ -358,15 +401,26 @@ void processMovement()
 	}
 }
 
-void processLightColor() {
+void processLightColor(gps::Shader shader) {
 	//set light color
 	lightColor = glm::vec3(0.3f + str, 0.5f + str, 0.3f + str); //white light
 	lightColorLoc = glGetUniformLocation(myCustomShader.shaderProgram, "lightColor");
 	glUniform3fv(lightColorLoc, 1, glm::value_ptr(lightColor));
 
-	lightColor2 = glm::vec3(str2, str2, str2); //white light
+
+	str2 = glm::abs(glm::dot(glm::vec3(0, 1, 0), glm::normalize(lightDir)));
+	if(lightDir.y <= 2)
+		lightColor2 = glm::vec3(0, 0, 0);
+	else
+		lightColor2 = glm::vec3(str2, str2, str2); //white light
 	lightColorLoc2 = glGetUniformLocation(myCustomShader.shaderProgram, "lightColor2");
 	glUniform3fv(lightColorLoc2, 1, glm::value_ptr(lightColor2));
+
+	skyboxShader.useShaderProgram();
+
+	glUniform1f(glGetUniformLocation(skyboxShader.shaderProgram, "lightColor2"), lightColor2.x);
+
+	shader.useShaderProgram();
 }
 
 bool initOpenGLWindow()
@@ -428,37 +482,6 @@ void initOpenGLState()
 	glFrontFace(GL_CCW); // GL_CCW for counter clock-wise
 }
 
-std::vector<float> treePosx;
-std::vector<float> treePosz;
-std::vector<float> treeType;
-std::vector<float> treeSize;
-std::vector<float> treeRot;
-
-const int trees = 8;
-
-void genTrees() {
-
-	for (int i = 0; i < trees; i++) {
-		for (int j = 0; j < trees; j++) {
-			int x = rand() % 100 + 50;
-			float size = x / 100.0;
-			int type = rand() % 2;
-			int posx = rand() % 5;
-			int posz = rand() % 5;
-			int rot = rand() % 628;
-			float rotation = rot / 100;
-
-			posx = -30 + i * (60 / trees) + posx;
-			posz = -30 + j * (60 / trees) + posz;
-
-			treePosx.push_back(posx);
-			treePosz.push_back(posz);
-			treeType.push_back(type);
-			treeSize.push_back(size);
-			treeRot.push_back(rotation);
-		}
-	}
-}
 
 std::vector<const GLchar*> faces;
 
@@ -539,7 +562,7 @@ void initUniforms()
 	glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
 	//set the light direction (direction towards the light)
-	lightDir = glm::vec3(0.0f, 1.0f, 1.0f);
+	lightDir = glm::vec3(0.0f, 20.0f, 20.0f);
 	lightDirLoc = glGetUniformLocation(myCustomShader.shaderProgram, "lightDir");
 	glUniform3fv(lightDirLoc, 1, glm::value_ptr(lightDir));
 
@@ -750,7 +773,7 @@ void renderScene(gps::Shader shader)
 
 	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	processLightColor();
+	processLightColor(shader);
 
 	renderGround(shader);
 
@@ -762,15 +785,24 @@ void renderScene(gps::Shader shader)
 
 	double currentTimeStamp = glfwGetTime();
 	delta = updateDelta(currentTimeStamp - lastTimeStamp, movementSpeed, delta);
+	deltaLight = updateDelta(currentTimeStamp - lastTimeStamp, lightSpeed, deltaLight);
 	deltaCube = updateDelta(currentTimeStamp - lastTimeStamp, 20, deltaCube);
 	updateDeltaCamera(currentTimeStamp - lastTimeStamp);
 	lastTimeStamp = currentTimeStamp;
+
+	glm::mat4 m = glm::mat4(1);
+	m = glm::rotate(m, deltaLight, glm::vec3(-1, 0, 0));
+	//m = glm::translate(m,glm::vec3(0, 20, 20));
+	lightDir = glm::vec3(m*glm::vec4(0,20,20,1));
+
+	lightDirLoc = glGetUniformLocation(myCustomShader.shaderProgram, "lightDir");
+	glUniform3fv(lightDirLoc, 1, glm::value_ptr(lightDir));
 }
 
 glm::mat4 computeLightSpaceTrMatrix()
 {
 	glm::mat4 lightView = glm::lookAt(2.0f * lightDir, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	glm::mat4 lightProjection = glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, near_plane, far_plane);
+	glm::mat4 lightProjection = glm::ortho(-60.0f, 60.0f, -60.0f, 60.0f, near_plane, far_plane);
 	glm::mat4 lightSpaceTrMatrix = lightProjection * lightView;
 	return lightSpaceTrMatrix;
 }
@@ -867,12 +899,12 @@ int main(int argc, const char * argv[]) {
 	glCheckError();
 
 	//TODO
-	//collision with ground and floating cubes	//HAS TO BE DEBUGGED
+	//collision with ground and floating cubes	//DONE
 	//when reach a floating cube, do presentation animation //DONE
-	//add more points to presentation and try besier curves
-	//day night cycle
+	//add more points to presentation and try besier curves	//DONE
+	//day night cycle	//DONE
 	//dynamically generate more trees and grounds or make infinite space with regard to camera position
-	//broader perspective for directional light source
+	//broader perspective for directional light source	//DONE
 
 	glfwSetInputMode(glWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
