@@ -16,6 +16,7 @@ uniform mat4 lightSpaceTrMatrix;
 
 void main() 
 {
+	
 	//compute eye space coordinates
 	fragTexCoords = vTexCoords;
 	fragPosEye = view * model * vec4(vPosition, 1.0f);

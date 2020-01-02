@@ -173,7 +173,7 @@ float lightStep = 0.1;
 float delta = 0;
 float deltaLight = 0;
 float movementSpeed = 15; // units per second
-float lightSpeed = 0.01;
+float lightSpeed = 0.03;
 float updateDelta(double elapsedSeconds, float speed, float delta) {
 	float d = delta + speed * elapsedSeconds;
 	if (d >= 360)
@@ -259,6 +259,9 @@ bool checkCollisions(glm::vec3 mins1, glm::vec3 maxs1, glm::vec3 mins2, glm::vec
 	glm::vec3 h1 = glm::vec3(mins.x, maxs.y, mins.z);
 	if (checkIfPointInsideBox(h1, mins2, maxs2))
 		return true;
+	glm::vec3 i1 = glm::vec3((mins.x + maxs.x) / 2, (mins.y + maxs.y) / 2, (mins.z + maxs.z) / 2);
+	if (checkIfPointInsideBox(i1, mins2, maxs2))
+		return true;
 	mins = mins2;
 	maxs = maxs2;
 	glm::vec3 a2 = glm::vec3(mins.x, mins.y, maxs.z);
@@ -285,6 +288,9 @@ bool checkCollisions(glm::vec3 mins1, glm::vec3 maxs1, glm::vec3 mins2, glm::vec
 	glm::vec3 h2 = glm::vec3(mins.x, maxs.y, mins.z);
 	if (checkIfPointInsideBox(h2, mins1, maxs1))
 		return true;
+	glm::vec3 i2 = glm::vec3((mins.x + maxs.x) / 2, (mins.y + maxs.y) / 2, (mins.z + maxs.z) / 2);
+	if (checkIfPointInsideBox(i2, mins1, maxs1))
+		return true;
 	return false;
 }
 
@@ -304,7 +310,9 @@ std::vector<float> treeType;
 std::vector<float> treeSize;
 std::vector<float> treeRot;
 
-int trees = 8;
+int environmentSizex = 100, environmentSizez = 100;
+
+int trees = environmentSizex * 2 + 10;
 
 void genTrees() {
 
@@ -324,8 +332,8 @@ void genTrees() {
 			int rot = rand() % 628;
 			float rotation = rot / 100;
 
-			posx = -30 + i * (60 / trees) + posx;
-			posz = -30 + j * (60 / trees) + posz;
+			posx = -(10 + 20 * (environmentSizex/2)) + i * ((20 * environmentSizex) / trees) + posx;
+			posz = -(10 + 20 * (environmentSizez/2)) + j * ((20 * environmentSizez) / trees) + posz;
 
 			treePosx.push_back(posx);
 			treePosz.push_back(posz);
@@ -374,6 +382,10 @@ void processMovement()
 				trees -= 1;
 			genTrees();
 		}
+
+		glm::vec3 dir = myCamera.getCameraDirection();
+
+		glm::vec3 pos = myCamera.getCameraPosition();
 
 		if (pressedKeys[GLFW_KEY_W]) {
 			myCamera.move(gps::MOVE_FORWARD, deltaC);
@@ -612,7 +624,7 @@ void renderTrees(gps::Shader shader)
 	//initialize the view matrix
 	view = myCamera.getViewMatrix();
 	//send view matrix data to shader	
-	glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+	glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
 
 	//create normal matrix
 	normalMatrix = glm::mat3(glm::inverseTranspose(view*model));
@@ -620,11 +632,22 @@ void renderTrees(gps::Shader shader)
 	glUniformMatrix3fv(glGetUniformLocation(shader.shaderProgram, "normalMatrix"), 1, GL_FALSE, glm::value_ptr(normalMatrix));
 
 	for (int i = 0; i < treePosx.size(); i++) {
+
 		model = glm::mat4(1.0f);
 
 		model = glm::translate(model, glm::vec3(treePosx[i], 0, treePosz[i]));
 		model = glm::rotate(model, glm::radians(treeRot[i]), glm::vec3(0, 1, 0));
 		model = glm::scale(model, glm::vec3(treeSize[i]));
+
+		view = myCamera.getViewMatrix();
+
+		glm::vec4 pos = view*model*glm::vec4(0,0,0,1);
+
+		pos.x = pos.x / pos.w;
+		pos.z = pos.z / pos.w;
+
+		if (pos.x < -20 || pos.z < -40 || pos.x > 20 || pos.z > 2)
+			continue;
 
 		glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "model") , 1, GL_FALSE, glm::value_ptr(model));
 
@@ -641,7 +664,7 @@ void renderAnimals(gps::Shader shader)
 	//initialize the view matrix
 	view = myCamera.getViewMatrix();
 	//send view matrix data to shader	
-	glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+	glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
 
 	//create normal matrix
 	normalMatrix = glm::mat3(glm::inverseTranspose(view*model));
@@ -684,7 +707,7 @@ void renderLightCubes(gps::Shader shader) {
 	//model = glm::translate(model, glm::vec3(1, 1, 1));
 	model = glm::translate(model, glm::vec3(10,10,10));
 	//model = glm::rotate(model, deltaCube, glm::vec3(1, 1, 0));
-	model = glm::scale(model, glm::vec3(0.07f, 0.07f, 0.07f));
+	model = glm::scale(model, glm::vec3(0.7f, 0.7f, 0.7f));
 
 	cubeModel = model;
 
@@ -695,11 +718,13 @@ void renderLightCubes(gps::Shader shader) {
 	lightCube.Draw(shader);
 }
 
+glm::vec3 prevDir = glm::vec3(0,0,0);
+
 void renderUfo(gps::Shader shader) {
 	//initialize the view matrix
 	view = myCamera.getViewMatrix();
 	//send view matrix data to shader	
-	glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+	glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
 
 	//create normal matrix
 	normalMatrix = glm::mat3(glm::inverseTranspose(view*model));
@@ -725,7 +750,17 @@ void renderUfo(gps::Shader shader) {
 
 	//model = glm::rotate(model, offset, glm::vec3(0, 1, 0));
 
-	model = glm::translate(model, 5.0f*myCamera.getCameraDirection());
+	glm::vec3 dir = myCamera.getCameraDirection();
+
+	glm::vec3 pos = myCamera.getCameraPosition();
+
+
+	if (5*dir.y + pos.y < 0.5)
+		dir.y = prevDir.y;
+
+	model = glm::translate(model, 5.0f*dir);
+
+	prevDir = dir;
 
 	model = glm::rotate(model, glm::radians(delta), glm::vec3(0, 1, 0));
 
@@ -746,19 +781,29 @@ void renderUfo(gps::Shader shader) {
 void renderGround(gps::Shader shader) {
 	view = myCamera.getViewMatrix();
 	//send view matrix data to shader	
-	glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+	glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
 
 	//create normal matrix
 	normalMatrix = glm::mat3(glm::inverseTranspose(view*model));
 	//send normal matrix data to shader
 	glUniformMatrix3fv(glGetUniformLocation(shader.shaderProgram, "normalMatrix"), 1, GL_FALSE, glm::value_ptr(normalMatrix));
 
-	for (int i = 0; i < 3; i++) {
-		for (int j = 0; j < 3; j++) {
+	for (int i = 0; i < environmentSizex; i++) {
+		for (int j = 0; j < environmentSizez; j++) {
 			//1
 			model = glm::mat4(1.0f);
 
-			model = glm::translate(model, glm::vec3((-20 + 20*i),0,(-20 + 20*j)));
+			model = glm::translate(model, glm::vec3((-(10 + 20 * (environmentSizex / 2)) + 20 * i), 0, (-(10 + 20 * (environmentSizez / 2)) + 20 * j)));
+
+			view = myCamera.getViewMatrix();
+
+			glm::vec4 pos = view * model*glm::vec4(0, 0, 0, 1);
+
+			pos.x = pos.x / pos.w;
+			pos.z = pos.z / pos.w;
+
+			if (pos.x < -40 || pos.z < -80 || pos.x > 40 || pos.z > 20)
+				continue;
 
 			glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(model));
 
@@ -885,6 +930,11 @@ void renderWhole() {
 		}
 		animationActualTime = glfwGetTime();
 	}
+
+	myCustomShader.useShaderProgram();
+
+	
+	glUniform3fv(glGetUniformLocation(myCustomShader.shaderProgram, "cameraPos"), 1, glm::value_ptr(myCamera.getCameraPosition()));
 }
 
 int main(int argc, const char * argv[]) {
