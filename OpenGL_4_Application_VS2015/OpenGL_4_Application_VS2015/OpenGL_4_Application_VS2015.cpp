@@ -60,7 +60,7 @@ GLuint depthMapTexture;
 
 gps::Camera myCamera(glm::vec3(0.0f, 1.0f, 2.5f), glm::vec3(0.0f, 1.0f, 0.0f));
 float cameraSpeed = 0.03f;
-const GLfloat near_plane = 1.0f, far_plane = 80.0f;
+const GLfloat near_plane = 1.0f, far_plane = 100.0f;
 
 bool pressedKeys[1024];
 float angle = 0.0f;
@@ -310,7 +310,7 @@ std::vector<float> treeType;
 std::vector<float> treeSize;
 std::vector<float> treeRot;
 
-int environmentSizex = 100, environmentSizez = 100;
+int environmentSizex = 50, environmentSizez = 50;
 
 int trees = environmentSizex * 2 + 10;
 
@@ -360,6 +360,14 @@ void processMovement()
 	}*/
 
 	if (!animationOn) {
+
+		if (pressedKeys[GLFW_KEY_K]) {
+			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		}
+
+		if (pressedKeys[GLFW_KEY_L]) {
+			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		}
 
 		if (pressedKeys[GLFW_KEY_Q]) {
 			if (str < 1)
@@ -574,7 +582,7 @@ void initUniforms()
 	glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
 	//set the light direction (direction towards the light)
-	lightDir = glm::vec3(0.0f, 20.0f, 20.0f);
+	lightDir = glm::vec3(0.0f, 10.0f, 10.0f);
 	lightDirLoc = glGetUniformLocation(myCustomShader.shaderProgram, "lightDir");
 	glUniform3fv(lightDirLoc, 1, glm::value_ptr(lightDir));
 
@@ -618,7 +626,7 @@ void initUniforms()
 
 }
 
-void renderTrees(gps::Shader shader)
+void renderTrees(gps::Shader shader, bool down)
 {
 
 	//initialize the view matrix
@@ -648,6 +656,9 @@ void renderTrees(gps::Shader shader)
 
 		if (pos.x < -20 || pos.z < -40 || pos.x > 20 || pos.z > 2)
 			continue;
+		if (!down)
+			if (pos.x < -5 || pos.z < -10 || pos.x > 5 || pos.z >10)
+				continue;
 
 		glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "model") , 1, GL_FALSE, glm::value_ptr(model));
 
@@ -778,7 +789,7 @@ void renderUfo(gps::Shader shader) {
 	ufo.Draw(shader);
 }
 
-void renderGround(gps::Shader shader) {
+void renderGround(gps::Shader shader, bool down) {
 	view = myCamera.getViewMatrix();
 	//send view matrix data to shader	
 	glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
@@ -804,6 +815,9 @@ void renderGround(gps::Shader shader) {
 
 			if (pos.x < -40 || pos.z < -80 || pos.x > 40 || pos.z > 20)
 				continue;
+			if (!down)
+				if (pos.x < -20 || pos.z < -20 || pos.x > 20 || pos.z > 20)
+					continue;
 
 			glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(model));
 
@@ -812,7 +826,7 @@ void renderGround(gps::Shader shader) {
 	}
 }
 
-void renderScene(gps::Shader shader)
+void renderScene(gps::Shader shader, bool drawUfo)
 {
 	shader.useShaderProgram();
 
@@ -820,13 +834,14 @@ void renderScene(gps::Shader shader)
 
 	processLightColor(shader);
 
-	renderGround(shader);
+	renderGround(shader, drawUfo);
 
-	renderTrees(shader);
+	renderTrees(shader, drawUfo);
 
 	renderAnimals(shader);
 
-	renderUfo(shader);
+	if(drawUfo)
+		renderUfo(shader);
 
 	double currentTimeStamp = glfwGetTime();
 	delta = updateDelta(currentTimeStamp - lastTimeStamp, movementSpeed, delta);
@@ -836,9 +851,9 @@ void renderScene(gps::Shader shader)
 	lastTimeStamp = currentTimeStamp;
 
 	glm::mat4 m = glm::mat4(1);
+	//m = glm::translate(m, glm::vec3(myCamera.getCameraPosition().x, 0, myCamera.getCameraPosition().z));
 	m = glm::rotate(m, deltaLight, glm::vec3(-1, 0, 0));
-	//m = glm::translate(m,glm::vec3(0, 20, 20));
-	lightDir = glm::vec3(m*glm::vec4(0,20,20,1));
+	lightDir = glm::vec3(m*glm::vec4(0,10,10,1));
 
 	lightDirLoc = glGetUniformLocation(myCustomShader.shaderProgram, "lightDir");
 	glUniform3fv(lightDirLoc, 1, glm::value_ptr(lightDir));
@@ -846,8 +861,8 @@ void renderScene(gps::Shader shader)
 
 glm::mat4 computeLightSpaceTrMatrix()
 {
-	glm::mat4 lightView = glm::lookAt(2.0f * lightDir, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	glm::mat4 lightProjection = glm::ortho(-60.0f, 60.0f, -60.0f, 60.0f, near_plane, far_plane);
+	glm::mat4 lightView = glm::lookAt(myCamera.getCameraPosition() + 5.0f * lightDir, myCamera.getCameraPosition(), glm::vec3(0.0f, 1.0f, 0.0f));
+	glm::mat4 lightProjection = glm::ortho(-40.0f, 40.0f, -40.0f, 40.0f, near_plane, far_plane);
 	glm::mat4 lightSpaceTrMatrix = lightProjection * lightView;
 	return lightSpaceTrMatrix;
 }
@@ -862,7 +877,7 @@ void renderSceneDepthMap() {
 	glBindFramebuffer(GL_FRAMEBUFFER, shadowMapFBO);
 	glClear(GL_DEPTH_BUFFER_BIT);
 	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	renderScene(shadowShader);
+	renderScene(shadowShader, true);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
@@ -885,7 +900,33 @@ void renderSceneMain() {
 
 	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
 
-	renderScene(myCustomShader);
+	renderScene(myCustomShader, true);
+}
+
+void renderDown() {
+	myCustomShader.useShaderProgram();
+	glViewport(retina_width * 3 / 5, retina_height * 3 / 5, retina_width * 2/5, retina_height * 2/5);
+	glClear(GL_DEPTH_BUFFER_BIT);
+	glUniformMatrix4fv(glGetUniformLocation(myCustomShader.shaderProgram, "lightSpaceTrMatrix"), 1, GL_FALSE, glm::value_ptr(computeLightSpaceTrMatrix()));
+
+	//initialize the view matrix
+	
+	gps::Camera auxCamera = myCamera;
+	myCamera.setCamera(gps::Camera(myCamera.getCameraPosition()+5.0f*myCamera.getCameraDirection(), myCamera.getCameraPosition() + 5.0f*myCamera.getCameraDirection() - glm::vec3(0.1*myCamera.getCameraDirection().x,1,0.1 * myCamera.getCameraDirection().z)));
+	view = myCamera.getViewMatrix();
+	//send view matrix data to shader	
+	glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+
+	glActiveTexture(GL_TEXTURE5);
+	glUniform1i(glGetUniformLocation(myCustomShader.shaderProgram, "shadowMap"), 5);
+	glBindTexture(GL_TEXTURE_2D, depthMapTexture);
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+
+	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+
+	renderScene(myCustomShader, false);
+
+	myCamera.setCamera(auxCamera);
 }
 
 void renderWhole() {
@@ -901,6 +942,7 @@ void renderWhole() {
 
 	mySkyBox.Draw(skyboxShader, view, projection);
 
+
 	if (checkCollisions(ufo.getMins(), ufo.getMaxs(), lightCube.getMins(), lightCube.getMaxs(), ufoModel, cubeModel)) {
 		std::cout << "Collision between ufo and cube" << count << "\n";
 		count++;
@@ -909,6 +951,7 @@ void renderWhole() {
 		animationStartTime = glfwGetTime();
 		step = 0;
 	}
+
 
 	if (animationOn) {
 		/*if(step==0)
@@ -923,6 +966,8 @@ void renderWhole() {
 		controlPoints.push_back(glm::vec3(5, 10, -5));
 		controlPoints.push_back(glm::vec3(-15, 10, -20));
 		controlPoints.push_back(glm::vec3(-20, 5, 10));
+		controlPoints.push_back(glm::vec3(3, 3, 7));
+		controlPoints.push_back(glm::vec3(0, 2, 1));
 		myCamera.interpolateBezier(controlPoints, animationActualTime - animationStartTime, animationTotalTime);
 		if (animationActualTime - animationStartTime >= animationTotalTime) {
 			//if(step >= 3)
@@ -935,6 +980,8 @@ void renderWhole() {
 
 	
 	glUniform3fv(glGetUniformLocation(myCustomShader.shaderProgram, "cameraPos"), 1, glm::value_ptr(myCamera.getCameraPosition()));
+
+	renderDown();
 }
 
 int main(int argc, const char * argv[]) {
@@ -953,8 +1000,10 @@ int main(int argc, const char * argv[]) {
 	//when reach a floating cube, do presentation animation //DONE
 	//add more points to presentation and try besier curves	//DONE
 	//day night cycle	//DONE
-	//dynamically generate more trees and grounds or make infinite space with regard to camera position
+	//dynamically generate more trees and grounds or make infinite space with regard to camera position	//APPROX
 	//broader perspective for directional light source	//DONE
+	//do not render ufo for down camera
+	// change perspective for down camera accordingly and transmit to shaders
 
 	glfwSetInputMode(glWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 

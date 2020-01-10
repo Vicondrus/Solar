@@ -92,6 +92,13 @@ namespace gps {
 		cameraRightDirection = glm::normalize(glm::cross(cameraDirection, glm::vec3(0, 1, 0)));
 		return cameraPosition;
 	}
+
+	void Camera::setCamera(Camera c)
+	{
+		this->cameraDirection = c.getCameraDirection();
+		this->cameraPosition = c.getCameraPosition();
+		this->cameraRightDirection = c.getCameraRightDirection();
+	}
     
 	std::vector<glm::vec3> deCasteljau(std::vector<glm::vec3> points, int degree, float t) {
 		float *pointsQ = new float[(degree + 1) * 3];

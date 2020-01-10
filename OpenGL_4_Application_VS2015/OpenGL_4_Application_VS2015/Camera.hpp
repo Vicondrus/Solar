@@ -28,7 +28,7 @@ namespace gps {
         void move(MOVE_DIRECTION direction, float speed);
         void rotate(float pitch, float yaw);
 		glm::vec3 interpolate(glm::vec3 cameraPosStart, glm::vec3 cameraPosStop, glm::vec3 cameraTargetStart, glm::vec3 cameraTargetStop, double elapsedTime, double totalTime);
-
+		void setCamera(Camera c);
 		glm::vec3 interpolateBezier(std::vector<glm::vec3> points, double elapsedTime, double totalTime);
 
         
