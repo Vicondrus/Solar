@@ -657,7 +657,7 @@ void renderTrees(gps::Shader shader, bool down)
 		if (pos.x < -20 || pos.z < -40 || pos.x > 20 || pos.z > 2)
 			continue;
 		if (!down)
-			if (pos.x < -5 || pos.z < -10 || pos.x > 5 || pos.z >10)
+			if (pos.x < -5 || pos.z < -20 || pos.x > 5 || pos.z >20 || pos.y <-10 || pos.y>10)
 				continue;
 
 		glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "model") , 1, GL_FALSE, glm::value_ptr(model));
@@ -816,7 +816,7 @@ void renderGround(gps::Shader shader, bool down) {
 			if (pos.x < -40 || pos.z < -80 || pos.x > 40 || pos.z > 20)
 				continue;
 			if (!down)
-				if (pos.x < -20 || pos.z < -20 || pos.x > 20 || pos.z > 20)
+				if (pos.x < -20 || pos.z < -20 || pos.x > 20 || pos.z > 20 || pos.y>20 || pos.y<-20)
 					continue;
 
 			glUniformMatrix4fv(glGetUniformLocation(shader.shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(model));
